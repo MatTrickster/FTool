@@ -1,13 +1,23 @@
 package com.e.ftool;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -32,9 +42,8 @@ public class LoginActivity extends AppCompatActivity {
                     noEdit.setError("Incorrect Number");
                 else if(pass.isEmpty())
                     passEdit.setError("Field is Empty");
-                else{
-
-                }
+                else
+                    login(no,pass);
 
             }
         });
@@ -52,8 +61,97 @@ public class LoginActivity extends AppCompatActivity {
 
         noEdit = findViewById(R.id.number);
         passEdit = findViewById(R.id.password);
-        login = findViewById(R.id.register);
+        login = findViewById(R.id.login);
         register = findViewById(R.id.register);
+
+    }
+
+    public void login(final String no, final String pass){
+
+        final Boolean[] is = {false};
+
+        final DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customers/");
+        ref.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                for(DataSnapshot snap : snapshot.getChildren()){
+
+                    String tNo = snap.child("number").getValue().toString();
+                    String tPass = snap.child("pass").getValue().toString();
+
+                    if(tNo.equals(no)){
+
+                        is[0] = true;
+
+                        if(tPass.equals(pass)){
+
+                            startActivity(new Intent(LoginActivity.this,CustomerMapActivity.class));
+                            finish();
+
+                        }else {
+
+                            Toast.makeText(LoginActivity.this, "Incorrect Password",
+                                    Toast.LENGTH_SHORT).show();
+
+                            break;
+                        }
+                    }
+                }
+
+                if(!is[0]){
+
+                    DatabaseReference ref1 = FirebaseDatabase.getInstance().getReference("drivers/");
+                    ref1.addValueEventListener(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                            for(DataSnapshot snap : snapshot.getChildren()){
+
+                                String tNo = snap.child("number").getValue().toString();
+                                String tPass = snap.child("pass").getValue().toString();
+
+                                if(tNo.equals(no)){
+
+                                    is[0] = true;
+
+                                    if(tPass.equals(pass)){
+
+                                        startActivity(new Intent(LoginActivity.this,DriverMapActivity.class));
+                                        finish();
+
+                                    }else {
+
+                                        Toast.makeText(LoginActivity.this, "Incorrect Password",
+                                                Toast.LENGTH_SHORT).show();
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if(!is[0]){
+
+                                Toast.makeText(LoginActivity.this,"No user found",Toast.LENGTH_SHORT).show();
+
+                            }
+
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+
+                        }
+                    });
+
+                }
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
 
     }
 }

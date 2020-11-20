@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
 
 android {
     compileSdkVersion 30
@@ -38,6 +39,9 @@ dependencies {
     implementation "androidx.cardview:cardview:1.0.0"
     implementation "com.google.android.libraries.places:places:2.4.0"
     implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.firebase:firebase-auth:19.4.0'
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.firebase:firebase-database:19.5.0'
+    implementation 'androidx.browser:browser:1.2.0'
 
 }

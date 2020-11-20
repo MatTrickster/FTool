@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">FTool</string>
+
+    <string-array name="users">
+        <item>Customer</item>
+        <item>Driver</item>
+    </string-array>
+
 </resources>
