@@ -12,4 +12,22 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/working"
+        android:layout_margin="10dp"
+        android:layout_alignParentEnd="true"
+        android:text="Working "
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/back"
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:gravity="center"
+        android:text="Initializing Map ..."
+        android:background="#fff"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
 </RelativeLayout>

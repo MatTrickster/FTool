@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
+import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -12,7 +13,13 @@ import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthProvider;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -22,7 +29,7 @@ import com.google.firebase.database.ValueEventListener;
 public class LoginActivity extends AppCompatActivity {
 
     EditText noEdit, passEdit;
-    Button login,register;
+    Button login, register;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +38,9 @@ public class LoginActivity extends AppCompatActivity {
 
         initialize();
 
+        noEdit.setText("7000511853");
+        passEdit.setText("123456");
+
         login.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -38,12 +48,12 @@ public class LoginActivity extends AppCompatActivity {
                 String no = noEdit.getText().toString();
                 String pass = passEdit.getText().toString();
 
-                if(no.length() != 10)
+                if (no.length() != 10)
                     noEdit.setError("Incorrect Number");
-                else if(pass.isEmpty())
+                else if (pass.isEmpty())
                     passEdit.setError("Field is Empty");
                 else
-                    login(no,pass);
+                    login(no, pass);
 
             }
         });
@@ -57,7 +67,7 @@ public class LoginActivity extends AppCompatActivity {
 
     }
 
-    public void initialize(){
+    public void initialize() {
 
         noEdit = findViewById(R.id.number);
         passEdit = findViewById(R.id.password);
@@ -66,7 +76,7 @@ public class LoginActivity extends AppCompatActivity {
 
     }
 
-    public void login(final String no, final String pass){
+    public void login(final String no, final String pass) {
 
         final Boolean[] is = {false};
 
@@ -75,21 +85,24 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                for(DataSnapshot snap : snapshot.getChildren()){
+                for (DataSnapshot snap : snapshot.getChildren()) {
 
                     String tNo = snap.child("number").getValue().toString();
                     String tPass = snap.child("pass").getValue().toString();
 
-                    if(tNo.equals(no)){
+                    if (tNo.equals(no)) {
 
                         is[0] = true;
 
-                        if(tPass.equals(pass)){
+                        if (tPass.equals(pass)) {
 
-                            startActivity(new Intent(LoginActivity.this,CustomerMapActivity.class));
+                            Intent intent = new Intent(LoginActivity.this, CustomerMapActivity.class);
+                            intent.putExtra("uId", snap.getKey());
+                            startActivity(intent);
                             finish();
 
-                        }else {
+
+                        } else {
 
                             Toast.makeText(LoginActivity.this, "Incorrect Password",
                                     Toast.LENGTH_SHORT).show();
@@ -99,28 +112,31 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 }
 
-                if(!is[0]){
+                if (!is[0]) {
 
                     DatabaseReference ref1 = FirebaseDatabase.getInstance().getReference("drivers/");
                     ref1.addValueEventListener(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                            for(DataSnapshot snap : snapshot.getChildren()){
+                            for (DataSnapshot snap : snapshot.getChildren()) {
 
                                 String tNo = snap.child("number").getValue().toString();
                                 String tPass = snap.child("pass").getValue().toString();
 
-                                if(tNo.equals(no)){
+                                if (tNo.equals(no)) {
 
                                     is[0] = true;
 
-                                    if(tPass.equals(pass)){
+                                    if (tPass.equals(pass)) {
 
-                                        startActivity(new Intent(LoginActivity.this,DriverMapActivity.class));
+                                        Intent intent = new Intent(LoginActivity.this, DriverMapActivity.class);
+                                        intent.putExtra("uId", snap.getKey());
+                                        startActivity(intent);
                                         finish();
 
-                                    }else {
+
+                                    } else {
 
                                         Toast.makeText(LoginActivity.this, "Incorrect Password",
                                                 Toast.LENGTH_SHORT).show();
@@ -129,9 +145,9 @@ public class LoginActivity extends AppCompatActivity {
                                 }
                             }
 
-                            if(!is[0]){
+                            if (!is[0]) {
 
-                                Toast.makeText(LoginActivity.this,"No user found",Toast.LENGTH_SHORT).show();
+                                Toast.makeText(LoginActivity.this, "No user found", Toast.LENGTH_SHORT).show();
 
                             }
 
