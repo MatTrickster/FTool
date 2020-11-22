@@ -13,6 +13,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
@@ -25,6 +26,11 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.GeoQuery;
+import com.firebase.geofire.GeoQueryDataEventListener;
+import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.ResolvableApiException;
@@ -41,14 +47,23 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CustomerMapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
@@ -57,6 +72,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
     TextView back;
+    List<LatLng> t = new ArrayList<LatLng>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,7 +124,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
             LocationRequest locationRequest = LocationRequest.create();
             locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-            locationRequest.setInterval(3000);
+            locationRequest.setInterval(7000);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(CustomerMapActivity.this,
@@ -147,13 +163,27 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             markerOptions.position(l1);
             markerOptions.title("Im here");
             map.clear();
-            map.animateCamera(CameraUpdateFactory.newLatLng(l1));
             map.addMarker(markerOptions);
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1,17));
             back.setVisibility(View.INVISIBLE);
+            getDriversAround();
+            AddDrivers();
 
         }
     };
+
+    public void AddDrivers(){
+
+        for(LatLng i:t){
+            Log.i("TAG","x"+t.size());
+            MarkerOptions options = new MarkerOptions();
+            options.position(i);
+            options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor));
+            map.addMarker(options);
+
+        }
+
+    }
 
     @Override
     protected void onStop() {
@@ -162,6 +192,47 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
 
+    public void getDriversAround(){
+
+        final DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
+        final GeoFire geoFire = new GeoFire(loc);
+        final GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(currentLocation.getLongitude(), currentLocation.getLatitude())
+                ,10000);
+
+        geoQuery.removeAllListeners();
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+
+                LatLng driverLocation = new LatLng(location.latitude, location.longitude);
+
+                if(!t.contains(driverLocation))
+                    t.add(driverLocation);
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
+            }
+        });
+
+    }
 }
 
 

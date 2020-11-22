@@ -38,7 +38,7 @@ public class LoginActivity extends AppCompatActivity {
 
         initialize();
 
-        noEdit.setText("7000511853");
+        noEdit.setText("9752003852");
         passEdit.setText("123456");
 
         login.setOnClickListener(new View.OnClickListener() {

@@ -24,6 +24,8 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -84,7 +86,8 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         working = findViewById(R.id.working);
         working.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
 
-            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("drivers_available");
+            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("drivers_available_info");
+            DatabaseReference test = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
 
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
@@ -95,6 +98,15 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                     reference.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
                             .setValue(available);
+
+                    GeoFire geoFire = new GeoFire(test);
+                    geoFire.setLocation(FirebaseAuth.getInstance().getCurrentUser().getUid(),
+                            new GeoLocation(currentLocation.getLatitude(),currentLocation.getLongitude()), new GeoFire.CompletionListener() {
+                        @Override
+                        public void onComplete(String key, DatabaseError error) {
+
+                        }
+                    });
 
                 }else{
 
