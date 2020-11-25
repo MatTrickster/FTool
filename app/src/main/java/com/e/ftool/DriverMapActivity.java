@@ -86,21 +86,14 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         working = findViewById(R.id.working);
         working.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
 
-            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("drivers_available_info");
             DatabaseReference test = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
 
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                 if(compoundButton.isChecked()){
 
-                    User available = new User(driver.getName(),driver.getNumber(),
-                            currentLocation.getLatitude(),currentLocation.getLongitude());
-
-                    reference.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
-                            .setValue(available);
-
                     GeoFire geoFire = new GeoFire(test);
-                    geoFire.setLocation(FirebaseAuth.getInstance().getCurrentUser().getUid(),
+                    geoFire.setLocation(uId,
                             new GeoLocation(currentLocation.getLatitude(),currentLocation.getLongitude()), new GeoFire.CompletionListener() {
                         @Override
                         public void onComplete(String key, DatabaseError error) {
@@ -108,9 +101,11 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                         }
                     });
 
+                    FirebaseDatabase.getInstance().getReference("drivers/"+uId).child("occupied").setValue(false);
+
                 }else{
 
-                    reference.child(uId).removeValue();
+                    test.child(uId).removeValue();
 
                 }
             }
