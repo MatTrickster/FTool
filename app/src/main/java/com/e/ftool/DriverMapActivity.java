@@ -83,6 +83,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     Boolean occupied = false;
     static Polyline polyline = null;
     String uId;
+    DatabaseReference reference = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -147,6 +148,14 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
             map.addMarker(markerOptions);
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1,17));
             back.setVisibility(View.INVISIBLE);
+
+            GeoFire geoFire = new GeoFire(reference);
+            geoFire.setLocation(uId, new GeoLocation(currentLocation.getLatitude(), currentLocation.getLongitude()), new GeoFire.CompletionListener() {
+                @Override
+                public void onComplete(String key, DatabaseError error) {
+
+                }
+            });
 
             if(occupied){
                 getCustomerLocation(cLatLng);

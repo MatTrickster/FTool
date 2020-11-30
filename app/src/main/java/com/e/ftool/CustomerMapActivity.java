@@ -122,18 +122,15 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
 
-        request.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        request.setOnClickListener(view -> {
 
-                if (request.getText().equals("Request")) {
+            if (request.getText().equals("Request")) {
 
-                    request.setText("Getting Your Driver");
-                    cRef.child("request").setValue("requested");
-                    //getClosestDriver();
-                }
-
+                request.setText("Getting Your Driver");
+                cRef.child("request").setValue("requested");
+                //getClosestDriver();
             }
+
         });
 
         checkGPS();
@@ -142,6 +139,99 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     Boolean driverFound = false;
     String driverId = null;
+
+    private final LocationCallback mLocationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            super.onLocationResult(locationResult);
+            if (locationResult.getLastLocation() == null)
+                return;
+            currentLocation = locationResult.getLastLocation();
+
+            LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+            MarkerOptions markerOptions = new MarkerOptions();
+            markerOptions.position(l1);
+            markerOptions.title("Im here");
+
+            if (cMarker.getId() != null)
+                cMarker.remove();
+
+            cMarker = map.addMarker(markerOptions);
+            cMarker.setTag("customer");
+            if (!driverFound) {
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
+                getDriversAround();
+                addDrivers();
+            }
+
+            back.setVisibility(View.INVISIBLE);
+
+        }
+    };
+
+    public void getDriversAround() {
+
+        final DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
+        final GeoFire geoFire = new GeoFire(loc);
+        final GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(currentLocation.getLongitude(), currentLocation.getLatitude())
+                , 10000);
+        geoQuery.removeAllListeners();
+
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+
+                LatLng driverLocation = new LatLng(location.latitude, location.longitude);
+
+                if (!t.contains(driverLocation))
+                    t.add(driverLocation);
+
+            }
+
+            @Override
+            public void onKeyExited(String key) { }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+                Log.i("TAG",""+key);
+
+            }
+
+            @Override
+            public void onGeoQueryReady() { }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) { }
+        });
+
+    }
+
+    public void addDrivers(){
+
+        for(Marker temp : driversAround){
+            temp.remove();
+        }
+
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        builder.include(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
+
+        for(int i=0;i<t.size();i++) {
+
+            builder.include(t.get(i));
+            MarkerOptions options = new MarkerOptions();
+            options.position(t.get(i));
+            options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor));
+            Marker marker = map.addMarker(options);
+            driversAround.add(marker);
+
+        }
+
+        if(t.size()!=0)
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),100));
+
+        driversAroundText.setText("Drivers Around : "+t.size());
+    }
 
     public void getClosestDriver() {
 
@@ -489,60 +579,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         return false;
     }
 
-    private final LocationCallback mLocationCallback = new LocationCallback() {
-        @Override
-        public void onLocationResult(LocationResult locationResult) {
-            super.onLocationResult(locationResult);
-            if (locationResult.getLastLocation() == null)
-                return;
-            currentLocation = locationResult.getLastLocation();
 
-            LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-            MarkerOptions markerOptions = new MarkerOptions();
-            markerOptions.position(l1);
-            markerOptions.title("Im here");
-
-            if (cMarker.getId() != null)
-                cMarker.remove();
-
-            cMarker = map.addMarker(markerOptions);
-            cMarker.setTag("customer");
-            if (!driverFound) {
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
-                getDriversAround();
-                addDrivers();
-            }
-
-            back.setVisibility(View.INVISIBLE);
-
-        }
-    };
-
-    public void addDrivers(){
-
-        for(Marker temp : driversAround){
-            temp.remove();
-        }
-
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        builder.include(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
-
-        for(int i=0;i<t.size();i++) {
-
-            builder.include(t.get(i));
-            MarkerOptions options = new MarkerOptions();
-            options.position(t.get(i));
-            options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor));
-            Marker marker = map.addMarker(options);
-            driversAround.add(marker);
-
-        }
-
-        if(t.size()!=0)
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),100));
-
-        driversAroundText.setText("Drivers Around : "+t.size());
-    }
 
     @Override
     protected void onStop() {
@@ -551,48 +588,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
 
-    public void getDriversAround() {
-
-        final DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
-        final GeoFire geoFire = new GeoFire(loc);
-        final GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(currentLocation.getLongitude(), currentLocation.getLatitude())
-                , 10000);
-        geoQuery.removeAllListeners();
-
-        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
-            @Override
-            public void onKeyEntered(String key, GeoLocation location) {
-
-                LatLng driverLocation = new LatLng(location.latitude, location.longitude);
-
-                if (!t.contains(driverLocation))
-                    t.add(driverLocation);
-
-            }
-
-            @Override
-            public void onKeyExited(String key) {
-
-            }
-
-            @Override
-            public void onKeyMoved(String key, GeoLocation location) {
-
-
-            }
-
-            @Override
-            public void onGeoQueryReady() {
-
-            }
-
-            @Override
-            public void onGeoQueryError(DatabaseError error) {
-
-            }
-        });
-
-    }
 
 }
 
