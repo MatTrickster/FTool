@@ -95,16 +95,17 @@ import java.util.concurrent.ExecutionException;
 public class CustomerMapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     SupportMapFragment mapFragment;
-    GoogleMap map;
+    static GoogleMap map;
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
-    TextView back,driversAround;
+    TextView back,driversAroundText;
     List<LatLng> t = new ArrayList<LatLng>();
+    List<Marker> driversAround = new ArrayList<>();
     Button request;
     String uId;
     Marker cMarker;
     DatabaseReference cRef;
-    Polyline polyline = null;
+    static Polyline polyline = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,7 +116,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         back = findViewById(R.id.back);
-        driversAround = findViewById(R.id.drivers_around);
+        driversAroundText = findViewById(R.id.drivers_around);
         request = findViewById(R.id.request);
         uId = getIntent().getStringExtra("uId");
 
@@ -129,7 +130,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                     request.setText("Getting Your Driver");
                     cRef.child("request").setValue("requested");
-                    getClosestDriver();
+                    //getClosestDriver();
                 }
 
             }
@@ -166,7 +167,14 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                             if (snapshot.child("occupied").getValue().toString().equals("false")) {
 
-                                driversAround.setVisibility(View.GONE);
+                                if(driverFound)
+                                    return;
+
+                                for(Marker temp : driversAround){
+                                    temp.remove();
+                                }
+
+                                driversAroundText.setVisibility(View.GONE);
 
                                 driverFound = true;
                                 driverId = snapshot.getKey();
@@ -287,7 +295,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     }
 
-    private String requestDirection(String requestedUrl) {
+    private static String requestDirection(String requestedUrl) {
         String responseString = "";
         InputStream inputStream = null;
         HttpURLConnection httpURLConnection = null;
@@ -338,7 +346,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         return url;
     }
 
-    public class TaskDirectionRequest extends AsyncTask<String, Void, String> {
+    public static class TaskDirectionRequest extends AsyncTask<String, Void, String> {
 
         @Override
         protected String doInBackground(String... strings) {
@@ -361,8 +369,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         }
     }
 
-    //Parse JSON Object from Google Direction API & display it on Map
-    public class TaskParseDirection extends AsyncTask<String, Void, List<List<HashMap<String, String>>>> {
+    public static class TaskParseDirection extends AsyncTask<String, Void, List<List<HashMap<String, String>>>> {
         @Override
         protected List<List<HashMap<String, String>>> doInBackground(String... jsonString) {
             List<List<HashMap<String, String>>> routes = null;
@@ -513,23 +520,28 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     public void addDrivers(){
 
+        for(Marker temp : driversAround){
+            temp.remove();
+        }
+
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         builder.include(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
 
-        for (LatLng i : t) {
-            Log.i("TAG","x"+i);
-            builder.include(i);
+        for(int i=0;i<t.size();i++) {
+
+            builder.include(t.get(i));
             MarkerOptions options = new MarkerOptions();
-            options.position(i);
+            options.position(t.get(i));
             options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor));
-            map.addMarker(options);
+            Marker marker = map.addMarker(options);
+            driversAround.add(marker);
 
         }
 
         if(t.size()!=0)
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),100));
 
-        driversAround.setText("Drivers Around : "+t.size());
+        driversAroundText.setText("Drivers Around : "+t.size());
     }
 
     @Override
@@ -544,17 +556,18 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         final DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
         final GeoFire geoFire = new GeoFire(loc);
         final GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(currentLocation.getLongitude(), currentLocation.getLatitude())
-                , 100000);
+                , 10000);
         geoQuery.removeAllListeners();
 
         geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
-                Log.i("TAG","x"+key);
+
                 LatLng driverLocation = new LatLng(location.latitude, location.longitude);
 
                 if (!t.contains(driverLocation))
                     t.add(driverLocation);
+
             }
 
             @Override
@@ -564,6 +577,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
             @Override
             public void onKeyMoved(String key, GeoLocation location) {
+
 
             }
 

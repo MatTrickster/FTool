@@ -3,6 +3,7 @@ package com.e.ftool;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.location.Location;
 import android.os.Bundle;
@@ -10,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -30,6 +32,7 @@ public class LoginActivity extends AppCompatActivity {
 
     EditText noEdit, passEdit;
     Button login, register;
+    AlertDialog dialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,12 +41,17 @@ public class LoginActivity extends AppCompatActivity {
 
         initialize();
 
-        noEdit.setText("9752003852");
+        noEdit.setText("7000511853");
         passEdit.setText("123456");
 
         login.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
+                dialog = new AlertDialog.Builder(LoginActivity.this)
+                        .setCancelable(false)
+                        .setMessage("Loading ...").create();
+                dialog.show();
 
                 String no = noEdit.getText().toString();
                 String pass = passEdit.getText().toString();
@@ -81,7 +89,7 @@ public class LoginActivity extends AppCompatActivity {
         final Boolean[] is = {false};
 
         final DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customers/");
-        ref.addValueEventListener(new ValueEventListener() {
+        ref.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
@@ -96,6 +104,8 @@ public class LoginActivity extends AppCompatActivity {
 
                         if (tPass.equals(pass)) {
 
+                            dialog.dismiss();
+
                             Intent intent = new Intent(LoginActivity.this, CustomerMapActivity.class);
                             intent.putExtra("uId", snap.getKey());
                             startActivity(intent);
@@ -104,6 +114,7 @@ public class LoginActivity extends AppCompatActivity {
 
                         } else {
 
+                            dialog.dismiss();
                             Toast.makeText(LoginActivity.this, "Incorrect Password",
                                     Toast.LENGTH_SHORT).show();
 
@@ -115,10 +126,9 @@ public class LoginActivity extends AppCompatActivity {
                 if (!is[0]) {
 
                     DatabaseReference ref1 = FirebaseDatabase.getInstance().getReference("drivers/");
-                    ref1.addValueEventListener(new ValueEventListener() {
+                    ref1.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
-
                             for (DataSnapshot snap : snapshot.getChildren()) {
 
                                 String tNo = snap.child("number").getValue().toString();
@@ -130,6 +140,8 @@ public class LoginActivity extends AppCompatActivity {
 
                                     if (tPass.equals(pass)) {
 
+                                        dialog.dismiss();
+
                                         Intent intent = new Intent(LoginActivity.this, DriverMapActivity.class);
                                         intent.putExtra("uId", snap.getKey());
                                         startActivity(intent);
@@ -138,6 +150,7 @@ public class LoginActivity extends AppCompatActivity {
 
                                     } else {
 
+                                        dialog.dismiss();
                                         Toast.makeText(LoginActivity.this, "Incorrect Password",
                                                 Toast.LENGTH_SHORT).show();
                                         break;
@@ -147,10 +160,10 @@ public class LoginActivity extends AppCompatActivity {
 
                             if (!is[0]) {
 
+                                dialog.dismiss();
                                 Toast.makeText(LoginActivity.this, "No user found", Toast.LENGTH_SHORT).show();
 
                             }
-
                         }
 
                         @Override
