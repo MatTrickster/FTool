@@ -26,6 +26,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -75,6 +76,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ThrowOnExtraProperties;
 import com.google.firebase.database.ValueEventListener;
 
 import org.json.JSONException;
@@ -99,13 +101,17 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
     TextView back,driversAroundText;
-    List<LatLng> t = new ArrayList<LatLng>();
-    List<Marker> driversAround = new ArrayList<>();
+    ArrayList<Driver> drivers = new ArrayList<>();
+    List<Marker> driversMarkers = new ArrayList<>();
     Button request;
     String uId;
     Marker cMarker;
-    DatabaseReference cRef;
+    DatabaseReference cRef,driversRef;
+    DataSnapshot driversSnap;
     static Polyline polyline = null;
+    String driverSelectedKey;
+    Boolean driverSelected = false;
+    LinearLayout requestLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,20 +123,21 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         mapFragment.getMapAsync(this);
         back = findViewById(R.id.back);
         driversAroundText = findViewById(R.id.drivers_around);
-        request = findViewById(R.id.request);
         uId = getIntent().getStringExtra("uId");
+        requestLayout = findViewById(R.id.request_layout);
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
-
-        request.setOnClickListener(view -> {
-
-            if (request.getText().equals("Request")) {
-
-                request.setText("Getting Your Driver");
-                cRef.child("request").setValue("requested");
-                //getClosestDriver();
+        driversRef = FirebaseDatabase.getInstance().getReference("drivers/");
+        driversRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                driversSnap = snapshot;
             }
 
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
         });
 
         checkGPS();
@@ -160,6 +167,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             cMarker.setTag("customer");
             if (!driverFound) {
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
+                //drivers.clear();
                 getDriversAround();
                 addDrivers();
             }
@@ -181,10 +189,26 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
 
-                LatLng driverLocation = new LatLng(location.latitude, location.longitude);
+                for(Driver d : drivers){
+                    if(d.getKey().equals(key))
+                        return;
+                }
 
-                if (!t.contains(driverLocation))
-                    t.add(driverLocation);
+                LatLng driverLocation = new LatLng(location.latitude, location.longitude);
+                ArrayList<HashMap<String,String>> service = new ArrayList<>();
+
+                for(DataSnapshot snap : driversSnap.child(key).child("services").getChildren()){
+                    HashMap<String,String> m = new HashMap<>();
+                    m.put("title",snap.getKey());
+                    m.put("charge",snap.child("charge").getValue().toString());
+                    service.add(m);
+                }
+
+                Driver driver = new Driver(driverLocation,service,driversSnap.child(key).child("name").getValue().toString(),
+                        driversSnap.child(key).child("number").getValue().toString(),key);
+
+                drivers.add(driver);
+
 
             }
 
@@ -209,28 +233,44 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     public void addDrivers(){
 
-        for(Marker temp : driversAround){
+        for(Marker temp : driversMarkers){
             temp.remove();
         }
+        driversMarkers.clear();
 
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         builder.include(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
 
-        for(int i=0;i<t.size();i++) {
+        for(int i=0;i<drivers.size();i++) {
 
-            builder.include(t.get(i));
+            builder.include(drivers.get(i).getLocation());
             MarkerOptions options = new MarkerOptions();
-            options.position(t.get(i));
+            options.position(drivers.get(i).getLocation());
             options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor));
             Marker marker = map.addMarker(options);
-            driversAround.add(marker);
+            marker.setTag(drivers.get(i).getKey());
+            driversMarkers.add(marker);
 
         }
 
-        if(t.size()!=0)
+        CustomMarkerInfoWindowView markerWindowView = new CustomMarkerInfoWindowView(CustomerMapActivity.this,drivers);
+        map.setInfoWindowAdapter(markerWindowView);
+
+        map.setOnInfoWindowClickListener(marker -> {
+            for(int i=0;i<driversMarkers.size();i++){
+                if(driversMarkers.get(i).getTag().equals(marker.getTag())){
+                    driverSelectedKey = drivers.get(i).getKey();
+                    driverSelected = true;
+                    requestLayout.setVisibility(View.VISIBLE);
+                    break;
+                }
+            }
+        });
+
+        if(drivers.size()!=0)
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),100));
 
-        driversAroundText.setText("Drivers Around : "+t.size());
+        driversAroundText.setText("Drivers Around : "+drivers.size());
     }
 
     public void getClosestDriver() {
@@ -260,7 +300,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                                 if(driverFound)
                                     return;
 
-                                for(Marker temp : driversAround){
+                                for(Marker temp : driversMarkers){
                                     temp.remove();
                                 }
 

@@ -28,6 +28,7 @@
         android:layout_height="wrap_content"/>
 
     <LinearLayout
+        android:id="@+id/request_layout"
         android:layout_alignParentBottom="true"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -62,7 +63,7 @@
                 android:text="JCB" />
 
             <RadioButton
-                android:id="@+id/harvester"
+                android:id="@+id/rotavator"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
