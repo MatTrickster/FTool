@@ -26,8 +26,11 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -100,18 +103,18 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     static GoogleMap map;
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
-    TextView back,driversAroundText;
+    TextView back,driversAroundText,driverSelectedName;
     ArrayList<Driver> drivers = new ArrayList<>();
     List<Marker> driversMarkers = new ArrayList<>();
     Button request;
     String uId;
     Marker cMarker;
     DatabaseReference cRef,driversRef;
-    DataSnapshot driversSnap;
+    DataSnapshot driversSnap,customerSnap;
     static Polyline polyline = null;
     String driverSelectedKey;
-    Boolean driverSelected = false;
-    LinearLayout requestLayout;
+    LinearLayout requestLayout,driverSelectedLayout;
+    ImageView removeSelectedDriver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,14 +122,70 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customer_map);
 
+        request = findViewById(R.id.request);
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         back = findViewById(R.id.back);
         driversAroundText = findViewById(R.id.drivers_around);
         uId = getIntent().getStringExtra("uId");
         requestLayout = findViewById(R.id.request_layout);
+        driverSelectedName = findViewById(R.id.driver_selected_name);
+        driverSelectedLayout = findViewById(R.id.driver_selected_layout);
+        removeSelectedDriver = findViewById(R.id.remove_selected_driver);
+
+        request.setOnClickListener(view -> {
+
+            RadioGroup radioGroup = findViewById(R.id.radioGroup);
+            RadioButton radioButton = findViewById(radioGroup.getCheckedRadioButtonId());
+
+            String serviceRequested=radioButton.getText().toString();
+
+            request(serviceRequested,driverSelectedKey);
+        });
+
+        removeSelectedDriver.setOnClickListener(view -> {
+           driverSelectedLayout.setVisibility(View.GONE);
+           requestLayout.setVisibility(View.GONE);
+        });
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
+        cRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                customerSnap = snapshot;
+
+                if(snapshot.child("request").exists()){
+                    if(snapshot.child("request").child("status").getValue().toString().equals("requested")){
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
+                                .setMessage("Request Sent To Driver.\nGetting Confirmation From Driver ...")
+                                .setCancelable(false)
+                                .setPositiveButton("Cancel", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                        driversRef.child(snapshot.child("request")
+                                                .child("driver_key").getValue().toString())
+                                                .child("customer_request").child(uId).removeValue();
+                                        cRef.child("request").removeValue();
+                                        Toast.makeText(CustomerMapActivity.this,"Request Cancelled",Toast.LENGTH_SHORT)
+                                                .show();
+                                        dialogInterface.cancel();
+                                    }
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+
         driversRef = FirebaseDatabase.getInstance().getReference("drivers/");
         driversRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -141,6 +200,31 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         });
 
         checkGPS();
+
+    }
+
+    public void request(String service,String key){
+
+        if(driversSnap.child(key).child("services").child(service).getChildrenCount()==0){
+            Toast.makeText(CustomerMapActivity.this,"Service Not Available For Selected Driver",
+                    Toast.LENGTH_SHORT).show();
+
+        }else{
+
+            HashMap<String, Object> map = new HashMap<>();
+            map.put("c_lat", currentLocation.getLatitude());
+            map.put("c_lng", currentLocation.getLongitude());
+            map.put("service",service);
+
+            driversRef.child(key).child("customer_request").child(uId).setValue(map);
+
+            HashMap<String,String> map1 = new HashMap<>();
+            map1.put("status","requested");
+            map1.put("driver_key",key);
+            cRef.child("request").setValue(map1);
+
+            Toast.makeText(CustomerMapActivity.this,"Request Sent Successfully",Toast.LENGTH_SHORT).show();
+        }
 
     }
 
@@ -167,7 +251,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             cMarker.setTag("customer");
             if (!driverFound) {
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
-                //drivers.clear();
                 getDriversAround();
                 addDrivers();
             }
@@ -218,8 +301,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             @Override
             public void onKeyMoved(String key, GeoLocation location) {
 
-                Log.i("TAG",""+key);
-
             }
 
             @Override
@@ -260,8 +341,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             for(int i=0;i<driversMarkers.size();i++){
                 if(driversMarkers.get(i).getTag().equals(marker.getTag())){
                     driverSelectedKey = drivers.get(i).getKey();
-                    driverSelected = true;
                     requestLayout.setVisibility(View.VISIBLE);
+                    driverSelectedName.setText("Driver Selected : "+drivers.get(i).getName());
+                    driverSelectedLayout.setVisibility(View.VISIBLE);
                     break;
                 }
             }
@@ -271,92 +353,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),100));
 
         driversAroundText.setText("Drivers Around : "+drivers.size());
-    }
-
-    public void getClosestDriver() {
-
-        final DatabaseReference driversRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
-
-        GeoFire geoFire = new GeoFire(driversRef);
-        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(currentLocation.getLatitude(),
-                currentLocation.getLongitude()), 25);
-        geoQuery.removeAllListeners();
-
-        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
-            @Override
-            public void onKeyEntered(String key, final GeoLocation location) {
-
-                if (!driverFound) {
-
-                    final DatabaseReference dRef = FirebaseDatabase.getInstance().getReference("drivers/" +
-                            key + "/");
-
-                    dRef.addValueEventListener(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-
-                            if (snapshot.child("occupied").getValue().toString().equals("false")) {
-
-                                if(driverFound)
-                                    return;
-
-                                for(Marker temp : driversMarkers){
-                                    temp.remove();
-                                }
-
-                                driversAroundText.setVisibility(View.GONE);
-
-                                driverFound = true;
-                                driverId = snapshot.getKey();
-
-                                HashMap<String, Object> map = new HashMap<>();
-                                map.put("u_id", uId);
-                                map.put("d_lat", currentLocation.getLatitude());
-                                map.put("d_lng", currentLocation.getLongitude());
-                                dRef.child("customer_request").updateChildren(map);
-                                dRef.child("occupied").setValue(false);
-
-                                cRef.child("request").setValue("accepted");
-
-                                getDriverLocation();
-                                //getDriverInfo();
-                                //getHasRideEnded();
-                                request.setText("Looking for Driver Location....");
-                            }
-
-                        }
-
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError error) {
-
-                        }
-                    });
-
-                }
-
-            }
-
-            @Override
-            public void onKeyExited(String key) {
-
-            }
-
-            @Override
-            public void onKeyMoved(String key, GeoLocation location) {
-
-            }
-
-            @Override
-            public void onGeoQueryReady() {
-
-            }
-
-            @Override
-            public void onGeoQueryError(DatabaseError error) {
-
-            }
-        });
-
     }
 
     private Marker mDriverMarker;
@@ -423,6 +419,80 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         driverLocationRef.addValueEventListener(driverLocationRefListener);
 
+    }
+
+    public void checkGPS() {
+        final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+
+            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage("Your GPS seems to be disabled, do you want to enable it?")
+                    .setCancelable(false)
+                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        public void onClick(final DialogInterface dialog, final int id) {
+                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        }
+                    })
+                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                        public void onClick(final DialogInterface dialog, final int id) {
+                            dialog.cancel();
+                        }
+                    });
+            final AlertDialog alert = builder.create();
+            alert.show();
+
+        }
+    }
+
+    private boolean isGooglePlayServicesAvailable() {
+        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+        int status = googleApiAvailability.isGooglePlayServicesAvailable(this);
+        if (ConnectionResult.SUCCESS == status)
+            return true;
+        else {
+            if (googleApiAvailability.isUserResolvableError(status))
+                Toast.makeText(this, "Please Install google play services to use this application", Toast.LENGTH_LONG).show();
+        }
+        return false;
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        map = googleMap;
+        cMarker = map.addMarker(new MarkerOptions().position(new LatLng(0, 0)));
+        cMarker.setTag("customer");
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (isGooglePlayServicesAvailable()) {
+            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+            LocationRequest locationRequest = LocationRequest.create();
+            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            locationRequest.setInterval(7000);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(CustomerMapActivity.this,
+                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                            10);
+                    return;
+                }
+            }
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
+
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (fusedLocationProviderClient != null)
+            fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
 
     private static String requestDirection(String requestedUrl) {
@@ -550,84 +620,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
         }
     }
-
-    public void checkGPS() {
-        final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
-        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Your GPS seems to be disabled, do you want to enable it?")
-                    .setCancelable(false)
-                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        public void onClick(final DialogInterface dialog, final int id) {
-                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-                        }
-                    })
-                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                        public void onClick(final DialogInterface dialog, final int id) {
-                            dialog.cancel();
-                        }
-                    });
-            final AlertDialog alert = builder.create();
-            alert.show();
-
-        }
-    }
-
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        map = googleMap;
-        cMarker = map.addMarker(new MarkerOptions().position(new LatLng(0, 0)));
-        cMarker.setTag("customer");
-
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (isGooglePlayServicesAvailable()) {
-            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
-            LocationRequest locationRequest = LocationRequest.create();
-            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-            locationRequest.setInterval(7000);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(CustomerMapActivity.this,
-                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                            10);
-                    return;
-                }
-            }
-            fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
-
-        }
-    }
-
-    private boolean isGooglePlayServicesAvailable() {
-        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-        int status = googleApiAvailability.isGooglePlayServicesAvailable(this);
-        if (ConnectionResult.SUCCESS == status)
-            return true;
-        else {
-            if (googleApiAvailability.isUserResolvableError(status))
-                Toast.makeText(this, "Please Install google play services to use this application", Toast.LENGTH_LONG).show();
-        }
-        return false;
-    }
-
-
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (fusedLocationProviderClient != null)
-            fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
-    }
-
 
 }
 
