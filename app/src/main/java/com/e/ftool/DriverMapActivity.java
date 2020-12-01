@@ -66,7 +66,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.sql.Driver;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -79,11 +78,13 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
     TextView back;
-    LatLng cLatLng;
-    Boolean occupied = false;
     static Polyline polyline = null;
     String uId;
-    DatabaseReference reference = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
+    DatabaseReference cRef,ref,reference;
+    ValueEventListener v1;
+    Customer customer;
+    Boolean occupied = false;
+    AlertDialog dialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,10 +92,11 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         setContentView(R.layout.activity_driver_map);
 
         uId = getIntent().getStringExtra("uId");
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("drivers/")
-                .child(uId);
+        ref = FirebaseDatabase.getInstance().getReference("drivers").child(uId);
+        cRef = FirebaseDatabase.getInstance().getReference("customers");
+        reference = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
 
-        ref.addValueEventListener(new ValueEventListener() {
+        v1 = ref.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
@@ -109,11 +111,50 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                 }
 
-                if(snapshot.child("customer_request").getChildrenCount()!=0) {
-                    double lat = Double.parseDouble(snapshot.child("customer_request").child("d_lat").getValue().toString());
-                    double lng = Double.parseDouble(snapshot.child("customer_request").child("d_lng").getValue().toString());
-                    cLatLng = new LatLng(lat,lng);
-                    occupied = true;
+                if(snapshot.child("customer_request").exists()) {
+
+                    if(snapshot.child("customer_request").child("status").getValue().toString().equals("requested")) {
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(DriverMapActivity.this)
+                                .setTitle("New Customer!")
+                                .setCancelable(false)
+                                .setMessage("Name \t\t:\t\t" + snapshot.child("customer_request").child("name")
+                                        .getValue().toString() + "\nService \t\t:\t\t" + snapshot.child("customer_request")
+                                        .child("service").getValue().toString() + "\nContact \t:\t\t" + snapshot
+                                        .child("customer_request").child("contact").getValue().toString())
+                                .setPositiveButton("Accept", (dialogInterface, i) -> {
+
+                                    cRef.child(snapshot.child("customer_request").child("uId").getValue().toString())
+                                            .child("request").child("status").setValue("accepted");
+                                    ref.child("customer_request").child("status").setValue("accepted");
+
+                                })
+                                .setNegativeButton("Decline", (dialogInterface, i) -> {
+
+                                    cRef.child(snapshot.child("customer_request").child("uId").getValue().toString())
+                                            .child("request").child("status").setValue("declined");
+                                    ref.child("customer_request").removeValue();
+
+                                    Toast.makeText(DriverMapActivity.this,"Request Declined",
+                                            Toast.LENGTH_SHORT).show();
+
+                                });
+                        builder.create().show();
+
+                    }else{
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(DriverMapActivity.this)
+                                .setMessage("Fetching Customer Details ...")
+                                .setCancelable(false);
+                        dialog = builder.create();
+                        dialog.show();
+
+                        customer = new Customer(snapshot.child("customer_request").child("name").getValue().toString(),
+                                snapshot.child("customer_request").child("contact").getValue().toString(), new
+                                    LatLng(Double.parseDouble(snapshot.child("customer_request").child("c_lat").getValue().toString()),
+                                        Double.parseDouble(snapshot.child("customer_request").child("c_lng").getValue().toString())));
+                        occupied = true;
+                    }
 
                 }
             }
@@ -139,15 +180,22 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 return;
             currentLocation = locationResult.getLastLocation();
 
-            LatLng l1 = new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
-            MarkerOptions markerOptions = new MarkerOptions();
-            markerOptions.position(l1);
-            markerOptions.title("Im here");
-            map.clear();
-            map.animateCamera(CameraUpdateFactory.newLatLng(l1));
-            map.addMarker(markerOptions);
-            map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1,17));
             back.setVisibility(View.INVISIBLE);
+
+            if(occupied){
+                dialog.dismiss();
+                drawRoute();
+            }else {
+
+                LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+                MarkerOptions markerOptions = new MarkerOptions();
+                markerOptions.position(l1);
+                markerOptions.title("Im here");
+                map.clear();
+                map.animateCamera(CameraUpdateFactory.newLatLng(l1));
+                map.addMarker(markerOptions);
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
+            }
 
             GeoFire geoFire = new GeoFire(reference);
             geoFire.setLocation(uId, new GeoLocation(currentLocation.getLatitude(), currentLocation.getLongitude()), new GeoFire.CompletionListener() {
@@ -156,10 +204,6 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                 }
             });
-
-            if(occupied){
-                getCustomerLocation(cLatLng);
-            }
         }
     };
 
@@ -215,6 +259,12 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        ref.removeEventListener(v1);
+    }
+
     private boolean isGooglePlayServicesAvailable() {
         GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
         int status = googleApiAvailability.isGooglePlayServicesAvailable(this);
@@ -227,26 +277,28 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         return false;
     }
 
-    private Marker mCustomerMarker;
+    public void drawRoute(){
 
-    public void getCustomerLocation(LatLng cLatLng){
+        map.clear();
 
-        LatLng driver = new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
+        LatLng dLatLng = new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
+        LatLng cLatLng = customer.getLatLng();
 
         Location loc1 = new Location("");
         loc1.setLatitude(cLatLng.latitude);
         loc1.setLongitude(cLatLng.longitude);
 
         Location loc2 = new Location("");
-        loc2.setLatitude(driver.latitude);
-        loc2.setLongitude(driver.longitude);
+        loc2.setLatitude(dLatLng.latitude);
+        loc2.setLongitude(dLatLng.longitude);
 
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
         builder.include(cLatLng);
         map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
 
-        mCustomerMarker = map.addMarker(new MarkerOptions().position(cLatLng).title("Customer").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup)));
+        map.addMarker(new MarkerOptions().position(cLatLng).title("Customer").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup)));
+        map.addMarker(new MarkerOptions().position(dLatLng).title("Me").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor)));
 
         try {
             new TaskDirectionRequest().execute(buildRequestUrl(new LatLng(
@@ -256,6 +308,35 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (fusedLocationProviderClient != null)
+            fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.driver_menu,menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+
+        int id = item.getItemId();
+
+        if(id == R.id.profile){
+
+            Intent intent = new Intent(DriverMapActivity.this,DriverProfileActivity.class);
+            intent.putExtra("uId",uId);
+            startActivity(intent);
+
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     private static String requestDirection(String requestedUrl) {
@@ -382,34 +463,5 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 polyline = map.addPolyline(polylineOptions);
             }
         }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (fusedLocationProviderClient != null)
-            fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.driver_menu,menu);
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-
-        int id = item.getItemId();
-
-        if(id == R.id.profile){
-
-            Intent intent = new Intent(DriverMapActivity.this,DriverProfileActivity.class);
-            intent.putExtra("uId",uId);
-            startActivity(intent);
-
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 }

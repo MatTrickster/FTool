@@ -100,64 +100,57 @@ public class DriverProfileActivity extends AppCompatActivity {
         });
 
 
+        addService.setOnClickListener(view -> {
 
-        addService.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+            View dView = LayoutInflater.from(getApplicationContext()).inflate(R.layout.add_service, null);
 
-                View dView = LayoutInflater.from(getApplicationContext()).inflate(R.layout.add_service, null);
+            AlertDialog.Builder builder = new AlertDialog.Builder(DriverProfileActivity.this)
+                    .setTitle("Select Service")
+                    .setView(dView)
+                    .setPositiveButton("ADD", (dialogInterface, i) -> { })
+                    .setNeutralButton("Cancel", (dialogInterface, i) -> { });
 
-                AlertDialog.Builder builder = new AlertDialog.Builder(DriverProfileActivity.this)
-                        .setTitle("Select Service")
-                        .setView(dView)
-                        .setPositiveButton("ADD", (dialogInterface, i) -> { })
-                        .setNeutralButton("Cancel", (dialogInterface, i) -> { });
+            AlertDialog dialog = builder.create();
+            dialog.show();
 
-                AlertDialog dialog = builder.create();
-                dialog.show();
+            Button button = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            button.setOnClickListener(view1 -> {
 
-                Button button = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
-                button.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
+                EditText priceEdit = dView.findViewById(R.id.service_price);
+                Spinner spinner = dView.findViewById(R.id.service_spinner);
 
-                        EditText priceEdit = dView.findViewById(R.id.service_price);
-                        Spinner spinner = dView.findViewById(R.id.service_spinner);
+                if (priceEdit.getText().length() == 0) {
+                    priceEdit.setError("Field is Empty");
+                }else if(priceEdit.getText().toString().equals("0")) {
+                    priceEdit.setError("Price Can't Be 0");
+                }
+                else
+                {
 
-                        if (priceEdit.getText().length() == 0) {
-                            priceEdit.setError("Field is Empty");
-                        }else if(priceEdit.getText().toString().equals("0")) {
-                            priceEdit.setError("Price Can't Be 0");
-                        }
-                        else
-                        {
+                    String text = spinner.getSelectedItem().toString();
 
-                            String text = spinner.getSelectedItem().toString();
-
-                            for(DataSnapshot s1 : snap.child("services").getChildren()){
-                                if(s1.getKey().equals(text)){
-                                    Toast.makeText(DriverProfileActivity.this,"Service Already Available",
-                                            Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
-                            }
-
-                            Map<String, Object> map = new HashMap<>();
-                            map.put("charge", priceEdit.getText().toString());
-                            reference.child("services").child(text).setValue(map);
-
-                            Toast.makeText(DriverProfileActivity.this,"Service Added Successfully",
+                    for(DataSnapshot s1 : snap.child("services").getChildren()){
+                        if(s1.getKey().equals(text)){
+                            Toast.makeText(DriverProfileActivity.this,"Service Already Available",
                                     Toast.LENGTH_SHORT).show();
-
-                            dialog.dismiss();
-
-
+                            return;
                         }
-
                     }
-                });
 
-            }
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("charge", priceEdit.getText().toString());
+                    reference.child("services").child(text).setValue(map);
+
+                    Toast.makeText(DriverProfileActivity.this,"Service Added Successfully",
+                            Toast.LENGTH_SHORT).show();
+
+                    dialog.dismiss();
+
+
+                }
+
+            });
+
         });
     }
 

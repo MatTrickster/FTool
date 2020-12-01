@@ -103,18 +103,20 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     static GoogleMap map;
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
-    TextView back,driversAroundText,driverSelectedName;
+    TextView back, driversAroundText, driverSelectedName;
     ArrayList<Driver> drivers = new ArrayList<>();
     List<Marker> driversMarkers = new ArrayList<>();
     Button request;
     String uId;
     Marker cMarker;
-    DatabaseReference cRef,driversRef;
-    DataSnapshot driversSnap,customerSnap;
+    DatabaseReference cRef, driversRef;
+    DataSnapshot driversSnap, customerSnap;
     static Polyline polyline = null;
     String driverSelectedKey;
-    LinearLayout requestLayout,driverSelectedLayout;
+    LinearLayout requestLayout, driverSelectedLayout;
     ImageView removeSelectedDriver;
+    AlertDialog dialog;
+    Boolean riding = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,14 +140,14 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             RadioGroup radioGroup = findViewById(R.id.radioGroup);
             RadioButton radioButton = findViewById(radioGroup.getCheckedRadioButtonId());
 
-            String serviceRequested=radioButton.getText().toString();
+            String serviceRequested = radioButton.getText().toString();
 
-            request(serviceRequested,driverSelectedKey);
+            request(serviceRequested, driverSelectedKey);
         });
 
         removeSelectedDriver.setOnClickListener(view -> {
-           driverSelectedLayout.setVisibility(View.GONE);
-           requestLayout.setVisibility(View.GONE);
+            driverSelectedLayout.setVisibility(View.GONE);
+            requestLayout.setVisibility(View.GONE);
         });
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
@@ -155,27 +157,43 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                 customerSnap = snapshot;
 
-                if(snapshot.child("request").exists()){
-                    if(snapshot.child("request").child("status").getValue().toString().equals("requested")){
+                if (snapshot.child("request").exists()) {
+                    if (snapshot.child("request").child("status").getValue().toString().equals("requested")) {
 
                         AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
                                 .setMessage("Request Sent To Driver.\nGetting Confirmation From Driver ...")
                                 .setCancelable(false)
-                                .setPositiveButton("Cancel", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-                                        driversRef.child(snapshot.child("request")
-                                                .child("driver_key").getValue().toString())
-                                                .child("customer_request").child(uId).removeValue();
-                                        cRef.child("request").removeValue();
-                                        Toast.makeText(CustomerMapActivity.this,"Request Cancelled",Toast.LENGTH_SHORT)
-                                                .show();
-                                        dialogInterface.cancel();
-                                    }
+                                .setPositiveButton("Cancel", (dialogInterface, i) -> {
+                                    driversRef.child(snapshot.child("request")
+                                            .child("driver_key").getValue().toString())
+                                            .child("customer_request").removeValue();
+                                    cRef.child("request").removeValue();
+                                    Toast.makeText(CustomerMapActivity.this, "Request Cancelled", Toast.LENGTH_SHORT)
+                                            .show();
+
                                 });
                         AlertDialog dialog = builder.create();
                         dialog.show();
 
+                    } else if (snapshot.child("request").child("status").getValue().toString().equals("declined")) {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
+                                .setMessage("Request Declined!")
+                                .setCancelable(false)
+                                .setPositiveButton("Ok", (dialogInterface, i) -> {
+                                    cRef.child("request").removeValue();
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    } else {
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
+                                .setMessage("Getting Driver Details ...")
+                                .setCancelable(false);
+                        dialog = builder.create();
+                        dialog.show();
+
+                        driverSelectedKey = snapshot.child("request").child("driver_key").getValue().toString();
+                        riding = true;
                     }
                 }
             }
@@ -203,33 +221,34 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     }
 
-    public void request(String service,String key){
+    public void request(String service, String key) {
 
-        if(driversSnap.child(key).child("services").child(service).getChildrenCount()==0){
-            Toast.makeText(CustomerMapActivity.this,"Service Not Available For Selected Driver",
+        if (driversSnap.child(key).child("services").child(service).getChildrenCount() == 0) {
+            Toast.makeText(CustomerMapActivity.this, "Service Not Available For Selected Driver",
                     Toast.LENGTH_SHORT).show();
 
-        }else{
+        } else {
 
             HashMap<String, Object> map = new HashMap<>();
             map.put("c_lat", currentLocation.getLatitude());
             map.put("c_lng", currentLocation.getLongitude());
-            map.put("service",service);
+            map.put("service", service);
+            map.put("contact", customerSnap.child("number").getValue().toString());
+            map.put("name", customerSnap.child("name").getValue().toString());
+            map.put("uId", uId);
+            map.put("status", "requested");
 
-            driversRef.child(key).child("customer_request").child(uId).setValue(map);
+            driversRef.child(key).child("customer_request").setValue(map);
 
-            HashMap<String,String> map1 = new HashMap<>();
-            map1.put("status","requested");
-            map1.put("driver_key",key);
+            HashMap<String, String> map1 = new HashMap<>();
+            map1.put("status", "requested");
+            map1.put("driver_key", key);
             cRef.child("request").setValue(map1);
 
-            Toast.makeText(CustomerMapActivity.this,"Request Sent Successfully",Toast.LENGTH_SHORT).show();
+            Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
         }
 
     }
-
-    Boolean driverFound = false;
-    String driverId = null;
 
     private final LocationCallback mLocationCallback = new LocationCallback() {
         @Override
@@ -239,23 +258,31 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 return;
             currentLocation = locationResult.getLastLocation();
 
-            LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-            MarkerOptions markerOptions = new MarkerOptions();
-            markerOptions.position(l1);
-            markerOptions.title("Im here");
+            back.setVisibility(View.INVISIBLE);
 
-            if (cMarker.getId() != null)
-                cMarker.remove();
+            if (riding) {
+                driversAroundText.setVisibility(View.GONE);
+                dialog.dismiss();
+                drawRoute();
+            } else {
 
-            cMarker = map.addMarker(markerOptions);
-            cMarker.setTag("customer");
-            if (!driverFound) {
+                LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+                MarkerOptions markerOptions = new MarkerOptions();
+                markerOptions.position(l1);
+                markerOptions.title("Im here");
+
+                if (cMarker.getId() != null)
+                    cMarker.remove();
+
+                cMarker = map.addMarker(markerOptions);
+                cMarker.setTag("customer");
+
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
                 getDriversAround();
                 addDrivers();
+
             }
 
-            back.setVisibility(View.INVISIBLE);
 
         }
     };
@@ -272,23 +299,23 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
 
-                for(Driver d : drivers){
-                    if(d.getKey().equals(key))
+                for (Driver d : drivers) {
+                    if (d.getKey().equals(key))
                         return;
                 }
 
                 LatLng driverLocation = new LatLng(location.latitude, location.longitude);
-                ArrayList<HashMap<String,String>> service = new ArrayList<>();
+                ArrayList<HashMap<String, String>> service = new ArrayList<>();
 
-                for(DataSnapshot snap : driversSnap.child(key).child("services").getChildren()){
-                    HashMap<String,String> m = new HashMap<>();
-                    m.put("title",snap.getKey());
-                    m.put("charge",snap.child("charge").getValue().toString());
+                for (DataSnapshot snap : driversSnap.child(key).child("services").getChildren()) {
+                    HashMap<String, String> m = new HashMap<>();
+                    m.put("title", snap.getKey());
+                    m.put("charge", snap.child("charge").getValue().toString());
                     service.add(m);
                 }
 
-                Driver driver = new Driver(driverLocation,service,driversSnap.child(key).child("name").getValue().toString(),
-                        driversSnap.child(key).child("number").getValue().toString(),key);
+                Driver driver = new Driver(driverLocation, service, driversSnap.child(key).child("name").getValue().toString(),
+                        driversSnap.child(key).child("number").getValue().toString(), key);
 
                 drivers.add(driver);
 
@@ -296,7 +323,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
 
             @Override
-            public void onKeyExited(String key) { }
+            public void onKeyExited(String key) {
+            }
 
             @Override
             public void onKeyMoved(String key, GeoLocation location) {
@@ -304,25 +332,27 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
 
             @Override
-            public void onGeoQueryReady() { }
+            public void onGeoQueryReady() {
+            }
 
             @Override
-            public void onGeoQueryError(DatabaseError error) { }
+            public void onGeoQueryError(DatabaseError error) {
+            }
         });
 
     }
 
-    public void addDrivers(){
+    public void addDrivers() {
 
-        for(Marker temp : driversMarkers){
+        for (Marker temp : driversMarkers) {
             temp.remove();
         }
         driversMarkers.clear();
 
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        builder.include(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
+        builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
 
-        for(int i=0;i<drivers.size();i++) {
+        for (int i = 0; i < drivers.size(); i++) {
 
             builder.include(drivers.get(i).getLocation());
             MarkerOptions options = new MarkerOptions();
@@ -334,38 +364,38 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         }
 
-        CustomMarkerInfoWindowView markerWindowView = new CustomMarkerInfoWindowView(CustomerMapActivity.this,drivers);
+        CustomMarkerInfoWindowView markerWindowView = new CustomMarkerInfoWindowView(CustomerMapActivity.this, drivers);
         map.setInfoWindowAdapter(markerWindowView);
 
         map.setOnInfoWindowClickListener(marker -> {
-            for(int i=0;i<driversMarkers.size();i++){
-                if(driversMarkers.get(i).getTag().equals(marker.getTag())){
+            for (int i = 0; i < driversMarkers.size(); i++) {
+                if (driversMarkers.get(i).getTag().equals(marker.getTag())) {
                     driverSelectedKey = drivers.get(i).getKey();
                     requestLayout.setVisibility(View.VISIBLE);
-                    driverSelectedName.setText("Driver Selected : "+drivers.get(i).getName());
+                    driverSelectedName.setText("Driver Selected : " + drivers.get(i).getName());
                     driverSelectedLayout.setVisibility(View.VISIBLE);
                     break;
                 }
             }
         });
 
-        if(drivers.size()!=0)
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),100));
+        if (drivers.size() != 0)
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
 
-        driversAroundText.setText("Drivers Around : "+drivers.size());
+        driversAroundText.setText("Drivers Around : " + drivers.size());
     }
 
-    private Marker mDriverMarker;
-    private DatabaseReference driverLocationRef;
     private ValueEventListener driverLocationRefListener;
     private LatLng driverLatLng;
 
-    public void getDriverLocation() {
+    public void drawRoute() {
 
-        driverLocationRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc/" +
-                driverId + "/").child("l");
+        map.clear();
 
-        driverLocationRefListener = new ValueEventListener() {
+        DatabaseReference driverLocationRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc/" +
+                driverSelectedKey + "/").child("l");
+
+        driverLocationRefListener = driverLocationRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
@@ -373,9 +403,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 double locationLng = Double.parseDouble(snapshot.child("1").getValue().toString());
 
                 driverLatLng = new LatLng(locationLat, locationLng);
-                if (mDriverMarker != null) {
-                    mDriverMarker.remove();
-                }
 
                 Location loc1 = new Location("");
                 loc1.setLatitude(currentLocation.getLatitude());
@@ -392,13 +419,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                 float distance = loc1.distanceTo(loc2);
 
-                if (distance < 100) {
-                    request.setText("Driver's Here");
-                } else {
-                    request.setText("Driver Found: " + String.valueOf(distance) + " meters");
-                }
-
-                mDriverMarker = map.addMarker(new MarkerOptions().position(driverLatLng).title("your driver").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor)));
+                map.addMarker(new MarkerOptions().position(driverLatLng).title("Driver")
+                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor)));
+                map.addMarker(new MarkerOptions()
+                        .position(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()))
+                        .title("Me").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup)));
 
                 try {
                     new TaskDirectionRequest().execute(buildRequestUrl(new LatLng(
@@ -415,9 +440,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             public void onCancelled(@NonNull DatabaseError error) {
 
             }
-        };
-
-        driverLocationRef.addValueEventListener(driverLocationRefListener);
+        });
 
     }
 
