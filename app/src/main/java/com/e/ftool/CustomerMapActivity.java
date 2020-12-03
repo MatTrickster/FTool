@@ -322,8 +322,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             driverDistance.setText("Driver is Almost Here");
         else
             driverDistance.setText("Distance : " + String.format("%.2f", driverDistanceInKM) + " KM");
-        driverName.setText(driversSnap.child(driverSelectedKey).child("name").getValue().toString());
-        driverNumber.setText(driversSnap.child(driverSelectedKey).child("number").getValue().toString());
+        driverName.setText("Driver Name\t\t\t:\t\t"+driversSnap
+                .child(driverSelectedKey).child("name").getValue().toString());
+        driverNumber.setText("Driver Number\t\t:\t\t"+driversSnap
+                .child(driverSelectedKey).child("number").getValue().toString());
 
     }
 
@@ -522,7 +524,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         map = googleMap;
         cMarker = map.addMarker(new MarkerOptions().position(new LatLng(0, 0)));
         cMarker.setTag("customer");
-
+        map.setMapStyle(MapStyleOptions.loadRawResourceStyle(CustomerMapActivity.this,R.raw.map_style));
     }
 
     @Override
@@ -670,7 +672,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 }
                 polylineOptions.addAll(points);
                 polylineOptions.width(14f);
-                polylineOptions.color(Color.BLACK);
+                polylineOptions.color(Color.parseColor("#72bcd4"));
                 polylineOptions.geodesic(true);
             }
             if (polyline != null)
