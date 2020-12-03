@@ -4,7 +4,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -74,6 +73,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -109,7 +109,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     Button request;
     String uId;
     Marker cMarker;
-    DatabaseReference cRef, driversRef;
+    DatabaseReference cRef, driversRef, driverLocationRef;
     DataSnapshot driversSnap, customerSnap;
     static Polyline polyline = null;
     String driverSelectedKey;
@@ -117,6 +117,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     ImageView removeSelectedDriver;
     AlertDialog dialog;
     Boolean riding = false;
+    float driverDistanceInKM;
+    ValueEventListener v1,v2;
+    private LatLng driverLatLng;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,7 +154,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         });
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
-        cRef.addValueEventListener(new ValueEventListener() {
+
+        v1 = cRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
@@ -185,6 +189,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                         AlertDialog dialog = builder.create();
                         dialog.show();
                     } else {
+
+                        checkGPS();
 
                         AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
                                 .setMessage("Getting Driver Details ...")
@@ -264,6 +270,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 driversAroundText.setVisibility(View.GONE);
                 dialog.dismiss();
                 drawRoute();
+                showDriverDetails();
             } else {
 
                 LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
@@ -280,12 +287,43 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
                 getDriversAround();
                 addDrivers();
+                driversAroundText.setVisibility(View.VISIBLE);
 
             }
 
 
         }
     };
+
+    public void showDriverDetails(){
+
+        LinearLayout linearLayout = findViewById(R.id.bottom_sheet);
+        linearLayout.setVisibility(View.VISIBLE);
+        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(linearLayout);
+
+        bottomSheetBehavior.setHideable(false);
+
+       ImageView imageView = findViewById(R.id.click);
+       imageView.setOnClickListener(view -> {
+           if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED) {
+               bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+               imageView.setImageResource(R.drawable.ic_down);
+           }
+           else {
+               bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+               imageView.setImageResource(R.drawable.ic_up);
+           }
+       });
+
+       TextView driverName = findViewById(R.id.driver_sheet_name);
+       TextView driverNumber = findViewById(R.id.driver_sheet_number);
+       TextView driverDistance = findViewById(R.id.driver_sheet_distance);
+
+       driverDistance.setText(String.format("%.2f", driverDistanceInKM)+" KM");
+       driverName.setText(driversSnap.child(driverSelectedKey).child("name").getValue().toString());
+       driverNumber.setText(driversSnap.child(driverSelectedKey).child("number").getValue().toString());
+
+    }
 
     public void getDriversAround() {
 
@@ -385,17 +423,14 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         driversAroundText.setText("Drivers Around : " + drivers.size());
     }
 
-    private ValueEventListener driverLocationRefListener;
-    private LatLng driverLatLng;
-
     public void drawRoute() {
 
         map.clear();
 
-        DatabaseReference driverLocationRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc/" +
+        driverLocationRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc/" +
                 driverSelectedKey + "/").child("l");
 
-        driverLocationRefListener = driverLocationRef.addValueEventListener(new ValueEventListener() {
+        v2 = driverLocationRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
@@ -417,12 +452,12 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 builder.include(driverLatLng);
                 map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
 
-                float distance = loc1.distanceTo(loc2);
+                driverDistanceInKM = loc1.distanceTo(loc2) / 1000;
 
                 map.addMarker(new MarkerOptions().position(driverLatLng).title("Driver")
                         .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor)));
                 map.addMarker(new MarkerOptions()
-                        .position(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()))
+                        .position(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()))
                         .title("Me").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup)));
 
                 try {
@@ -644,6 +679,13 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        cRef.removeEventListener(v1);
+        driverLocationRef.removeEventListener(v2);
+    }
 }
 
 
