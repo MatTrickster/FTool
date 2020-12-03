@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -17,6 +18,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -91,6 +93,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.Permission;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -327,6 +330,34 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         driverNumber.setText("Driver Number\t\t:\t\t"+driversSnap
                 .child(driverSelectedKey).child("number").getValue().toString());
 
+        Button callDriver = findViewById(R.id.call_driver);
+        callDriver.setOnClickListener(view -> {
+
+            if (ContextCompat.checkSelfPermission(CustomerMapActivity.this,
+                    Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(CustomerMapActivity.this,
+                        new String[]{Manifest.permission.CALL_PHONE},100);
+
+            }else {
+
+                Intent callIntent = new Intent(Intent.ACTION_CALL);
+                callIntent.setData(Uri.parse("tel:" + driversSnap
+                        .child(driverSelectedKey).child("number").getValue().toString()));
+                startActivity(callIntent);
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if(requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+            Intent callIntent = new Intent(Intent.ACTION_CALL);
+            callIntent.setData(Uri.parse("tel:" + driversSnap
+                    .child(driverSelectedKey).child("number").getValue().toString()));
+            startActivity(callIntent);
+        }
     }
 
     public void getDriversAround() {
