@@ -118,7 +118,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     AlertDialog dialog;
     Boolean riding = false;
     float driverDistanceInKM;
-    ValueEventListener v1,v2;
+    ValueEventListener v1, v2;
     private LatLng driverLatLng;
 
     @Override
@@ -295,7 +295,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         }
     };
 
-    public void showDriverDetails(){
+    public void showDriverDetails() {
 
         LinearLayout linearLayout = findViewById(R.id.bottom_sheet);
         linearLayout.setVisibility(View.VISIBLE);
@@ -303,25 +303,27 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         bottomSheetBehavior.setHideable(false);
 
-       ImageView imageView = findViewById(R.id.click);
-       imageView.setOnClickListener(view -> {
-           if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED) {
-               bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-               imageView.setImageResource(R.drawable.ic_down);
-           }
-           else {
-               bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
-               imageView.setImageResource(R.drawable.ic_up);
-           }
-       });
+        ImageView imageView = findViewById(R.id.click);
+        imageView.setOnClickListener(view -> {
+            if (bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED) {
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                imageView.setImageResource(R.drawable.ic_down);
+            } else {
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                imageView.setImageResource(R.drawable.ic_up);
+            }
+        });
 
-       TextView driverName = findViewById(R.id.driver_sheet_name);
-       TextView driverNumber = findViewById(R.id.driver_sheet_number);
-       TextView driverDistance = findViewById(R.id.driver_sheet_distance);
+        TextView driverName = findViewById(R.id.driver_sheet_name);
+        TextView driverNumber = findViewById(R.id.driver_sheet_number);
+        TextView driverDistance = findViewById(R.id.driver_sheet_distance);
 
-       driverDistance.setText(String.format("%.2f", driverDistanceInKM)+" KM");
-       driverName.setText(driversSnap.child(driverSelectedKey).child("name").getValue().toString());
-       driverNumber.setText(driversSnap.child(driverSelectedKey).child("number").getValue().toString());
+        if (driverDistanceInKM < (0.15))
+            driverDistance.setText("Driver is Almost Here");
+        else
+            driverDistance.setText("Distance : " + String.format("%.2f", driverDistanceInKM) + " KM");
+        driverName.setText(driversSnap.child(driverSelectedKey).child("name").getValue().toString());
+        driverNumber.setText(driversSnap.child(driverSelectedKey).child("number").getValue().toString());
 
     }
 
