@@ -32,6 +32,7 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -120,9 +121,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     ImageView removeSelectedDriver;
     AlertDialog dialog;
     Boolean riding = false;
-    float driverDistanceInKM;
     ValueEventListener v1, v2;
     private LatLng driverLatLng;
+    String []time_distance = new String[2];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -179,7 +180,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                                             .show();
 
                                 });
-                        AlertDialog dialog = builder.create();
+                        dialog = builder.create();
                         dialog.show();
 
                     } else if (snapshot.child("request").child("status").getValue().toString().equals("declined")) {
@@ -189,20 +190,40 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                                 .setPositiveButton("Ok", (dialogInterface, i) -> {
                                     cRef.child("request").removeValue();
                                 });
-                        AlertDialog dialog = builder.create();
+                        dialog = builder.create();
                         dialog.show();
-                    } else {
+                    } else if(snapshot.child("request").child("status").getValue().toString().equals("accepted")) {
 
                         checkGPS();
-
+                        if(dialog!=null)
+                            dialog.dismiss();
+                        driverSelectedLayout.setVisibility(View.GONE);
+                        requestLayout.setVisibility(View.GONE);
                         AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
-                                .setMessage("Getting Driver Details ...")
+                                .setMessage("Request Accepted!\nGetting Driver Details ...")
                                 .setCancelable(false);
                         dialog = builder.create();
                         dialog.show();
 
                         driverSelectedKey = snapshot.child("request").child("driver_key").getValue().toString();
                         riding = true;
+                    }else{
+
+                        RatingBar ratingBar = new RatingBar(CustomerMapActivity.this);
+                        ratingBar.setNumStars(3);
+                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
+                                .setTitle("Ride Completed!")
+                                .setMessage("Please Rate Driver!")
+                                .setView(ratingBar)
+                                .setPositiveButton("Rate", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                        Log.i("TAG","x "+ratingBar.getRating());
+                                    }
+                                });
+                        dialog = builder.create();
+                        dialog.show();
+
                     }
                 }
             }
@@ -317,20 +338,21 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
         });
 
-        TextView driverName = findViewById(R.id.driver_sheet_name);
-        TextView driverNumber = findViewById(R.id.driver_sheet_number);
-        TextView driverDistance = findViewById(R.id.driver_sheet_distance);
+        TextView driverName = findViewById(R.id.user_sheet_name);
+        TextView driverNumber = findViewById(R.id.user_sheet_number);
+        TextView driverDistance = findViewById(R.id.user_sheet_distance);
 
-        if (driverDistanceInKM < (0.15))
-            driverDistance.setText("Driver is Almost Here");
+        if (time_distance[0] == null)
+           driverDistance.setText("Fetching Time and Distance ...");
         else
-            driverDistance.setText("Distance : " + String.format("%.2f", driverDistanceInKM) + " KM");
+            driverDistance.setText("Distance : " + time_distance[0] + "\t\tETA : " + time_distance[1]);
+
         driverName.setText("Driver Name\t\t\t:\t\t"+driversSnap
                 .child(driverSelectedKey).child("name").getValue().toString());
         driverNumber.setText("Driver Number\t\t:\t\t"+driversSnap
                 .child(driverSelectedKey).child("number").getValue().toString());
 
-        Button callDriver = findViewById(R.id.call_driver);
+        Button callDriver = findViewById(R.id.call_user);
         callDriver.setOnClickListener(view -> {
 
             if (ContextCompat.checkSelfPermission(CustomerMapActivity.this,
@@ -487,8 +509,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 builder.include(driverLatLng);
                 map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
 
-                driverDistanceInKM = loc1.distanceTo(loc2) / 1000;
-
                 map.addMarker(new MarkerOptions().position(driverLatLng).title("Driver")
                         .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor)));
                 map.addMarker(new MarkerOptions()
@@ -496,10 +516,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                         .title("Me").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup)));
 
                 try {
-                    new TaskDirectionRequest().execute(buildRequestUrl(new LatLng(
+                    String s = new TaskDirectionRequest().execute(buildRequestUrl(new LatLng(
                             currentLocation.getLatitude(),
                             currentLocation.getLongitude()
                     ), driverLatLng)).get();
+                    Log.i("TAG",""+s);
                 } catch (ExecutionException | InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -639,7 +660,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         return url;
     }
 
-    public static class TaskDirectionRequest extends AsyncTask<String, Void, String> {
+    public class TaskDirectionRequest extends AsyncTask<String, Void, String> {
 
         @Override
         protected String doInBackground(String... strings) {
@@ -662,7 +683,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         }
     }
 
-    public static class TaskParseDirection extends AsyncTask<String, Void, List<List<HashMap<String, String>>>> {
+    public class TaskParseDirection extends AsyncTask<String, Void, List<List<HashMap<String, String>>>> {
         @Override
         protected List<List<HashMap<String, String>>> doInBackground(String... jsonString) {
             List<List<HashMap<String, String>>> routes = null;
@@ -691,8 +712,12 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 for (HashMap<String, String> point : path) {
 
                     x++;
-                    if (x <= 2) {
-                        Log.i("TAG", "" + point);
+                    if (x == 1) {
+                        time_distance[0] = point.get("distance");
+                        continue;
+                    }
+                    else if(x == 2){
+                        time_distance[1] = point.get("duration");
                         continue;
                     }
 

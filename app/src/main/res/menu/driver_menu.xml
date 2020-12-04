@@ -5,4 +5,7 @@
             android:title="Profile"
         />
 
+    <item android:id="@+id/history"
+        android:title="History"/>
+
 </menu>

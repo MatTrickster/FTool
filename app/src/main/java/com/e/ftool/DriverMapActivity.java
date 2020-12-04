@@ -1,10 +1,9 @@
 package com.e.ftool;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -15,60 +14,38 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
-import android.provider.ContactsContract;
 import android.util.Log;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.CompoundButton;
-import android.widget.Switch;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.location.*;
+import com.google.android.gms.maps.*;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
-import com.google.android.gms.maps.model.PolylineOptions;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+import com.google.android.gms.maps.model.*;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.database.*;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.io.*;
+import java.net.*;
+import java.sql.Timestamp;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -79,12 +56,16 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     Location currentLocation;
     TextView back;
     static Polyline polyline = null;
-    String uId;
-    DatabaseReference cRef,ref,reference;
+    String uId, cId;
+    DatabaseReference cRef, ref, reference;
     ValueEventListener v1;
     Customer customer;
     Boolean occupied = false;
     AlertDialog dialog;
+    String[] time_distance = new String[2];
+    FloatingActionButton completeRide;
+    Boolean arrivedToCustomer = false;
+    Driver driver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,6 +76,16 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         ref = FirebaseDatabase.getInstance().getReference("drivers").child(uId);
         cRef = FirebaseDatabase.getInstance().getReference("customers");
         reference = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
+        completeRide = findViewById(R.id.complete_ride);
+
+        completeRide.setOnClickListener(view -> {
+            if (arrivedToCustomer) {
+                endRide();
+            } else {
+                Toast.makeText(DriverMapActivity.this, "Destination Not Arrived Yet",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
 
         v1 = ref.addValueEventListener(new ValueEventListener() {
             @Override
@@ -102,18 +93,23 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                 if (snapshot.child("services").getChildrenCount() == 0) {
 
-                    Toast.makeText(DriverMapActivity.this,"Add Atleast 1 Service",
+                    Toast.makeText(DriverMapActivity.this, "Add Atleast 1 Service",
                             Toast.LENGTH_SHORT).show();
 
-                    Intent intent = new Intent(DriverMapActivity.this,DriverProfileActivity.class);
-                    intent.putExtra("uId",uId);
+                    Intent intent = new Intent(DriverMapActivity.this, DriverProfileActivity.class);
+                    intent.putExtra("uId", uId);
                     startActivity(intent);
 
                 }
 
-                if(snapshot.child("customer_request").exists()) {
+                if (snapshot.child("customer_request").exists()) {
 
-                    if(snapshot.child("customer_request").child("status").getValue().toString().equals("requested")) {
+                    driver = new Driver(snapshot.child("name").getValue().toString(), snapshot.child("number").getValue()
+                            .toString(), snapshot.child("customer_request").child("service").getValue().toString(), "0");
+
+                    cId = snapshot.child("customer_request").child("uId").getValue().toString();
+
+                    if (snapshot.child("customer_request").child("status").getValue().toString().equals("requested")) {
 
                         AlertDialog.Builder builder = new AlertDialog.Builder(DriverMapActivity.this)
                                 .setTitle("New Customer!")
@@ -124,24 +120,22 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                                         .child("customer_request").child("contact").getValue().toString())
                                 .setPositiveButton("Accept", (dialogInterface, i) -> {
 
-                                    cRef.child(snapshot.child("customer_request").child("uId").getValue().toString())
-                                            .child("request").child("status").setValue("accepted");
+                                    cRef.child(cId).child("request").child("status").setValue("accepted");
                                     ref.child("customer_request").child("status").setValue("accepted");
 
                                 })
                                 .setNegativeButton("Decline", (dialogInterface, i) -> {
 
-                                    cRef.child(snapshot.child("customer_request").child("uId").getValue().toString())
-                                            .child("request").child("status").setValue("declined");
+                                    cRef.child(cId).child("request").child("status").setValue("declined");
                                     ref.child("customer_request").removeValue();
 
-                                    Toast.makeText(DriverMapActivity.this,"Request Declined",
+                                    Toast.makeText(DriverMapActivity.this, "Request Declined",
                                             Toast.LENGTH_SHORT).show();
 
                                 });
                         builder.create().show();
 
-                    }else{
+                    } else {
 
                         AlertDialog.Builder builder = new AlertDialog.Builder(DriverMapActivity.this)
                                 .setMessage("Fetching Customer Details ...")
@@ -151,8 +145,9 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                         customer = new Customer(snapshot.child("customer_request").child("name").getValue().toString(),
                                 snapshot.child("customer_request").child("contact").getValue().toString(), new
-                                    LatLng(Double.parseDouble(snapshot.child("customer_request").child("c_lat").getValue().toString()),
-                                        Double.parseDouble(snapshot.child("customer_request").child("c_lng").getValue().toString())));
+                                LatLng(Double.parseDouble(snapshot.child("customer_request").child("c_lat").getValue().toString()),
+                                Double.parseDouble(snapshot.child("customer_request").child("c_lng").getValue().toString())),
+                                snapshot.child("customer_request").child("service").getValue().toString(), "0");
                         occupied = true;
                     }
 
@@ -172,6 +167,21 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         checkGPS();
     }
 
+    public void endRide() {
+
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        String time = timestamp.toString();
+        time = time.substring(0, time.indexOf("."));
+
+        cRef.child(cId).child("history").child(time).setValue(driver);
+        cRef.child(cId).child("request").child("status").setValue("completed");
+        ref.child("history").child(time).setValue(customer);
+        ref.child("customer_request").removeValue();
+
+        Toast.makeText(DriverMapActivity.this,"Ride Completed!",Toast.LENGTH_SHORT).show();
+
+    }
+
     private final LocationCallback mLocationCallback = new LocationCallback() {
         @Override
         public void onLocationResult(LocationResult locationResult) {
@@ -182,10 +192,16 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
             back.setVisibility(View.INVISIBLE);
 
-            if(occupied){
+            if (occupied) {
                 dialog.dismiss();
                 drawRoute();
-            }else {
+                showCustomerDetails();
+
+                if (time_distance[0] != null)
+                    if (!time_distance[0].contains("km"))
+                        arrivedToCustomer = true;
+
+            } else {
 
                 LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
                 MarkerOptions markerOptions = new MarkerOptions();
@@ -206,6 +222,61 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
             });
         }
     };
+
+    public void showCustomerDetails() {
+
+        LinearLayout linearLayout = findViewById(R.id.bottom_sheet);
+        linearLayout.setVisibility(View.VISIBLE);
+        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(linearLayout);
+
+        bottomSheetBehavior.setHideable(false);
+
+        ImageView imageView = findViewById(R.id.click);
+        imageView.setOnClickListener(view -> {
+            if (bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED)
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+
+        });
+
+        TextView customerName = findViewById(R.id.user_sheet_name);
+        TextView customerNumber = findViewById(R.id.user_sheet_number);
+        TextView customerDistance = findViewById(R.id.user_sheet_distance);
+
+        customerName.setText("Customer Name\t\t\t:\t\t" + customer.getName());
+        customerNumber.setText("Customer Number\t\t:\t\t" + customer.getContact());
+
+        if (time_distance[0] == null)
+            customerDistance.setText("Fetching Time and Distance ...");
+        else
+            customerDistance.setText("Distance : " + time_distance[0] + "\t\tETA : " + time_distance[1]);
+
+        Button callCustomer = findViewById(R.id.call_user);
+        callCustomer.setOnClickListener(view -> {
+
+            if (ContextCompat.checkSelfPermission(DriverMapActivity.this,
+                    Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(DriverMapActivity.this,
+                        new String[]{Manifest.permission.CALL_PHONE}, 100);
+
+            } else {
+
+                Intent callIntent = new Intent(Intent.ACTION_CALL);
+                callIntent.setData(Uri.parse("tel:" + customer.getContact()));
+                startActivity(callIntent);
+            }
+        });
+    }
+
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Intent callIntent = new Intent(Intent.ACTION_CALL);
+            callIntent.setData(Uri.parse("tel:" + customer.getContact()));
+            startActivity(callIntent);
+        }
+    }
+
 
     public void checkGPS() {
         final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -234,6 +305,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     @Override
     public void onMapReady(GoogleMap googleMap) {
         map = googleMap;
+        map.setMapStyle(MapStyleOptions.loadRawResourceStyle(DriverMapActivity.this, R.raw.map_style));
     }
 
     @Override
@@ -277,11 +349,11 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         return false;
     }
 
-    public void drawRoute(){
+    public void drawRoute() {
 
         map.clear();
 
-        LatLng dLatLng = new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
+        LatLng dLatLng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
         LatLng cLatLng = customer.getLatLng();
 
         Location loc1 = new Location("");
@@ -297,14 +369,17 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         builder.include(cLatLng);
         map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
 
-        map.addMarker(new MarkerOptions().position(cLatLng).title("Customer").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup)));
-        map.addMarker(new MarkerOptions().position(dLatLng).title("Me").icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor)));
+        map.addMarker(new MarkerOptions().position(cLatLng).title("Customer")
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup))).setAnchor(0.5f, 0.5f);
+        map.addMarker(new MarkerOptions().position(dLatLng).title("Me")
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor))).setAnchor(0.5f, 0.5f);
 
         try {
             new TaskDirectionRequest().execute(buildRequestUrl(new LatLng(
                     currentLocation.getLatitude(),
                     currentLocation.getLongitude()
             ), cLatLng)).get();
+
         } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -319,7 +394,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.driver_menu,menu);
+        getMenuInflater().inflate(R.menu.driver_menu, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -328,10 +403,10 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
         int id = item.getItemId();
 
-        if(id == R.id.profile){
+        if (id == R.id.profile) {
 
-            Intent intent = new Intent(DriverMapActivity.this,DriverProfileActivity.class);
-            intent.putExtra("uId",uId);
+            Intent intent = new Intent(DriverMapActivity.this, DriverProfileActivity.class);
+            intent.putExtra("uId", uId);
             startActivity(intent);
 
         }
@@ -390,7 +465,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         return url;
     }
 
-    public static class TaskDirectionRequest extends AsyncTask<String, Void, String> {
+    public class TaskDirectionRequest extends AsyncTask<String, Void, String> {
 
         @Override
         protected String doInBackground(String... strings) {
@@ -407,13 +482,14 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         protected void onPostExecute(String responseString) {
 
             super.onPostExecute(responseString);
-            //Json object parsing
+
             TaskParseDirection parseResult = new TaskParseDirection();
             parseResult.execute(responseString);
         }
     }
 
-    public static class TaskParseDirection extends AsyncTask<String, Void, List<List<HashMap<String, String>>>> {
+    public class TaskParseDirection extends AsyncTask<String, Void, List<List<HashMap<String, String>>>> {
+
         @Override
         protected List<List<HashMap<String, String>>> doInBackground(String... jsonString) {
             List<List<HashMap<String, String>>> routes = null;
@@ -442,8 +518,11 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 for (HashMap<String, String> point : path) {
 
                     x++;
-                    if (x <= 2) {
-                        Log.i("TAG", "" + point);
+                    if (x == 1) {
+                        time_distance[0] = point.get("distance");
+                        continue;
+                    } else if (x == 2) {
+                        time_distance[1] = point.get("duration");
                         continue;
                     }
 
@@ -452,9 +531,10 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                     points.add(new LatLng(lat, lng));
                 }
+
                 polylineOptions.addAll(points);
                 polylineOptions.width(14f);
-                polylineOptions.color(Color.BLACK);
+                polylineOptions.color(Color.parseColor("#72bcd4"));
                 polylineOptions.geodesic(true);
             }
             if (polyline != null)
@@ -462,6 +542,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
             if (polylineOptions != null) {
                 polyline = map.addPolyline(polylineOptions);
             }
+
         }
     }
 }
