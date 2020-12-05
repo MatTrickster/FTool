@@ -255,11 +255,16 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
 
                                 })
-                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                .setNegativeButton("No", (dialogInterface, i) -> {
 
+                                    String time = " ";
+                                    for(DataSnapshot temp :snapshot.child("current_ride").getChildren()) {
+                                        time = temp.getKey();
                                     }
+
+                                    cRef.child("request").removeValue();
+                                    cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
+                                    cRef.child("current_ride").removeValue();
                                 });
                         dialog = builder.create();
                         dialog.show();
