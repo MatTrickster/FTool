@@ -55,7 +55,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
     TextView back;
-    static Polyline polyline = null;
+    Polyline polyline = null;
     String uId, cId;
     DatabaseReference cRef, ref, reference;
     ValueEventListener v1;
@@ -66,6 +66,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     FloatingActionButton completeRide;
     Boolean arrivedToCustomer = false;
     Driver driver;
+    LinearLayout bottomSheet;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,6 +104,8 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 }
 
                 if (snapshot.child("customer_request").exists()) {
+
+                    completeRide.setVisibility(View.VISIBLE);
 
                     driver = new Driver(snapshot.child("name").getValue().toString(), snapshot.child("number").getValue()
                             .toString(), snapshot.child("customer_request").child("service").getValue().toString(), "0");
@@ -173,13 +176,18 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         String time = timestamp.toString();
         time = time.substring(0, time.indexOf("."));
 
-        cRef.child(cId).child("history").child(time).setValue(driver);
+        ref.child("customer_request").removeValue();
+        cRef.child(cId).child("current_ride").child(time).setValue(driver);
         cRef.child(cId).child("request").child("status").setValue("completed");
         ref.child("history").child(time).setValue(customer);
-        ref.child("customer_request").removeValue();
 
         Toast.makeText(DriverMapActivity.this,"Ride Completed!",Toast.LENGTH_SHORT).show();
 
+        map.clear();
+
+        bottomSheet.setVisibility(View.GONE);
+        completeRide.setVisibility(View.GONE);
+        occupied = false;
     }
 
     private final LocationCallback mLocationCallback = new LocationCallback() {
@@ -225,9 +233,9 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
     public void showCustomerDetails() {
 
-        LinearLayout linearLayout = findViewById(R.id.bottom_sheet);
-        linearLayout.setVisibility(View.VISIBLE);
-        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(linearLayout);
+        bottomSheet = findViewById(R.id.bottom_sheet);
+        bottomSheet.setVisibility(View.VISIBLE);
+        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
 
         bottomSheetBehavior.setHideable(false);
 

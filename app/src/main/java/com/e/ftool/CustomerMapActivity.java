@@ -24,6 +24,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
@@ -157,8 +158,20 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             requestLayout.setVisibility(View.GONE);
         });
 
-        cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
+        driversRef = FirebaseDatabase.getInstance().getReference("drivers/");
+        driversRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                driversSnap = snapshot;
+            }
 
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+
+        cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
         v1 = cRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -209,16 +222,43 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                         riding = true;
                     }else{
 
+                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                        );
+                        LinearLayout linearLayout = new LinearLayout(CustomerMapActivity.this);
                         RatingBar ratingBar = new RatingBar(CustomerMapActivity.this);
-                        ratingBar.setNumStars(3);
+                        ratingBar.setLayoutParams(lp);
+                        ratingBar.setNumStars(5);
+                        ratingBar.setRating(3);
+                        linearLayout.setGravity(Gravity.CENTER_HORIZONTAL);
+                        linearLayout.addView(ratingBar);
                         AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
                                 .setTitle("Ride Completed!")
                                 .setMessage("Please Rate Driver!")
-                                .setView(ratingBar)
-                                .setPositiveButton("Rate", new DialogInterface.OnClickListener() {
+                                .setCancelable(false)
+                                .setView(linearLayout)
+                                .setPositiveButton("Rate", (dialogInterface, i) -> {
+
+                                    String time = " ";
+                                    for(DataSnapshot temp :snapshot.child("current_ride").getChildren()) {
+                                        time = temp.getKey();
+                                    }
+
+                                    driversRef.child(snapshot.child("request").child("driver_key").getValue().toString())
+                                            .child("history").child(time).child("rating")
+                                            .setValue(String.valueOf(ratingBar.getRating()));
+                                    cRef.child("request").removeValue();
+                                    cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
+                                    cRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
+                                    cRef.child("current_ride").removeValue();
+
+
+                                })
+                                .setNegativeButton("No", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialogInterface, int i) {
-                                        Log.i("TAG","x "+ratingBar.getRating());
+
                                     }
                                 });
                         dialog = builder.create();
@@ -226,19 +266,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                     }
                 }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-
-        driversRef = FirebaseDatabase.getInstance().getReference("drivers/");
-        driversRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                driversSnap = snapshot;
             }
 
             @Override
