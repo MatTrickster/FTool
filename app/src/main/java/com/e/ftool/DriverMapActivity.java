@@ -51,7 +51,7 @@ import java.util.concurrent.ExecutionException;
 public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     SupportMapFragment mapFragment;
-    static GoogleMap map;
+    GoogleMap map;
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
     TextView back;

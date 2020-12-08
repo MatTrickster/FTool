@@ -779,7 +779,3 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         driverLocationRef.removeEventListener(v2);
     }
 }
-
-
-
-

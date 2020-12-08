@@ -5,28 +5,21 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
-import android.location.Location;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.Toolbar;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.database.*;
+
+import java.util.Objects;
 
 public class RegisterActivity extends AppCompatActivity {
 
     EditText nameEdit,noEdit,passEdit;
-    Button register;
+    TextView register;
     Spinner spinner;
 
     @Override
@@ -34,26 +27,25 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
+        Objects.requireNonNull(this.getSupportActionBar()).hide();
+
         initialize();
 
-        register.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        register.setOnClickListener(view -> {
 
-                String name = nameEdit.getText().toString();
-                String no = noEdit.getText().toString();
-                String pass = passEdit.getText().toString();
+            String name = nameEdit.getText().toString();
+            String no = noEdit.getText().toString();
+            String pass = passEdit.getText().toString();
 
-                if(name.isEmpty())
-                    nameEdit.setError("Field is Empty");
-                else if(no.length() != 10)
-                    noEdit.setError("Incorrect Number");
-                else if(pass.length() < 6)
-                    passEdit.setError("Password too short");
-                else
-                    checkNumberInDB(no);
+            if(name.isEmpty())
+                nameEdit.setError("Field is Empty");
+            else if(no.length() != 10)
+                noEdit.setError("Incorrect Number");
+            else if(pass.length() < 6)
+                passEdit.setError("Password too short");
+            else
+                checkNumberInDB(no);
 
-            }
         });
     }
 

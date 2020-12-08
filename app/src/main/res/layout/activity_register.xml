@@ -5,44 +5,121 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="#1e1f22"
     tools:context=".RegisterActivity">
 
-    <EditText
-        android:id="@+id/name"
+    <ImageView
+        android:scaleType="center"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="10dp"
-        android:hint="Name"
-        android:inputType="text" />
+        android:layout_height="350dp"
+        android:src="@mipmap/logo"
+        />
 
-    <EditText
-        android:layout_margin="10dp"
-        android:id="@+id/number"
+    <TextView
+        android:layout_marginBottom="10dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Phone Number"
-        android:inputType="number" />
+        android:text="   𝗪𝗘𝗟𝗖𝗢𝗠𝗘"
+        android:textColor="#fff"
+        android:textSize="40sp"
+        />
 
-    <EditText
-        android:id="@+id/password"
+    <androidx.cardview.widget.CardView
+        android:layout_marginBottom="-40dp"
+        app:cardCornerRadius="40dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="10dp"
-        android:hint="Password"
-        android:inputType="textPassword" />
+        android:layout_height="match_parent">
 
-    <androidx.appcompat.widget.AppCompatSpinner
-        android:id="@+id/users"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="10dp"
-        android:entries="@array/users" />
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
-    <Button
-        android:id="@+id/register"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="10dp"
-        android:text="Register" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="𝗥𝗘𝗚𝗜𝗦𝗧𝗘𝗥"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:textColor="#000"
+                android:textSize="24sp"
+                />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_margin="8dp"
+                android:hint="Name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:drawablePadding="10dp"
+                    android:drawableStart="@drawable/ic_person"
+                    android:id="@+id/name"
+                    android:layout_width="match_parent"
+                    android:inputType="number"
+                    android:layout_height="wrap_content"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_margin="10dp"
+                android:hint="Number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:drawablePadding="8dp"
+                    android:drawableStart="@drawable/ic_contact"
+                    android:id="@+id/number"
+                    android:layout_width="match_parent"
+                    android:inputType="number"
+                    android:layout_height="wrap_content"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_margin="10dp"
+                android:hint="Password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:drawablePadding="8dp"
+                    android:drawableStart="@drawable/ic_password"
+                    android:id="@+id/password"
+                    android:layout_width="match_parent"
+                    android:inputType="textPassword"
+                    android:layout_height="wrap_content"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <androidx.appcompat.widget.AppCompatSpinner
+                android:id="@+id/users"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:entries="@array/users" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_margin="20dp"
+                app:cardCornerRadius="40dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:textSize="20sp"
+                    android:gravity="center"
+                    android:textColor="#fff"
+                    android:background="#000"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:text="𝗥𝗘𝗚𝗜𝗦𝗧𝗘𝗥"
+                    android:id="@+id/register"/>
+
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
 
 </LinearLayout>
