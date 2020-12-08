@@ -280,7 +280,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         });
 
         checkGPS();
-
     }
 
     public void request(String service, String key) {
@@ -573,18 +572,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
 
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Your GPS seems to be disabled, do you want to enable it?")
+            builder.setMessage("Your GPS seems to be disabled, Enable it?")
                     .setCancelable(false)
-                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        public void onClick(final DialogInterface dialog, final int id) {
-                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-                        }
-                    })
-                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                        public void onClick(final DialogInterface dialog, final int id) {
-                            dialog.cancel();
-                        }
-                    });
+                    .setPositiveButton("Yes", (dialog, id) ->
+                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
+                    .setNegativeButton("No", (dialog, id) -> finish());
             final AlertDialog alert = builder.create();
             alert.show();
 
