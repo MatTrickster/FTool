@@ -47,6 +47,5 @@ public class SplashActivity extends AppCompatActivity {
         tag.startAnimation(anim2);
 
         Glide.with(this).load(R.drawable.tractor_gif).into(gif);
-
     }
 }
