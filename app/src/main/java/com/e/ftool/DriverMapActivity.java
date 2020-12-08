@@ -67,6 +67,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     Boolean arrivedToCustomer = false;
     Driver driver;
     LinearLayout bottomSheet;
+    Circle dCircle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -214,11 +215,20 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
                 MarkerOptions markerOptions = new MarkerOptions();
                 markerOptions.position(l1);
-                markerOptions.title("Im here");
+                markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_blue_dot));
+                markerOptions.anchor(0.5f,0.5f);
                 map.clear();
-                map.animateCamera(CameraUpdateFactory.newLatLng(l1));
                 map.addMarker(markerOptions);
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
+
+                CircleOptions co = new CircleOptions();
+                co.center(l1);
+                co.radius(30);
+                co.fillColor(0x154D2EFF);
+                co.strokeColor(0xee4D2EFF);
+                co.strokeWidth(1.0f);
+                dCircle = map.addCircle(co);
+
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
             }
 
             GeoFire geoFire = new GeoFire(reference);

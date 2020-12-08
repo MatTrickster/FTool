@@ -46,29 +46,26 @@ public class LoginActivity extends AppCompatActivity {
 
         initialize();
 
-        noEdit.setText("9752003852");
+        noEdit.setText("7000511853");
         passEdit.setText("123456");
 
-        login.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        login.setOnClickListener(view -> {
 
-                dialog = new AlertDialog.Builder(LoginActivity.this)
-                        .setCancelable(false)
-                        .setMessage("Loading ...").create();
-                dialog.show();
+            dialog = new AlertDialog.Builder(LoginActivity.this)
+                    .setCancelable(false)
+                    .setMessage("Loading ...").create();
+            dialog.show();
 
-                String no = noEdit.getText().toString();
-                String pass = passEdit.getText().toString();
+            String no = noEdit.getText().toString();
+            String pass = passEdit.getText().toString();
 
-                if (no.length() != 10)
-                    noEdit.setError("Incorrect Number");
-                else if (pass.isEmpty())
-                    passEdit.setError("Field is Empty");
-                else
-                    login(no, pass);
+            if (no.length() != 10)
+                noEdit.setError("Incorrect Number");
+            else if (pass.isEmpty())
+                passEdit.setError("Field is Empty");
+            else
+                login(no, pass);
 
-            }
         });
 
         register.setOnClickListener(new View.OnClickListener() {

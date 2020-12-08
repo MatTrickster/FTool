@@ -14,7 +14,6 @@
         android:layout_height="match_parent"/>
 
     <TextView
-        android:visibility="gone"
         android:id="@+id/back"
         android:textStyle="bold"
         android:textSize="20sp"

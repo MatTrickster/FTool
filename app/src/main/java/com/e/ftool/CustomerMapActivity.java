@@ -66,6 +66,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
@@ -114,6 +115,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     Button request;
     String uId;
     Marker cMarker;
+    Circle cCircle;
     DatabaseReference cRef, driversRef, driverLocationRef;
     DataSnapshot driversSnap, customerSnap;
     static Polyline polyline = null;
@@ -131,6 +133,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customer_map);
+
+        Objects.requireNonNull(this.getSupportActionBar()).hide();
 
         request = findViewById(R.id.request);
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -181,6 +185,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 if (snapshot.child("request").exists()) {
                     if (snapshot.child("request").child("status").getValue().toString().equals("requested")) {
 
+                        if(dialog!=null)
+                            dialog.dismiss();
+
                         AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
                                 .setMessage("Request Sent To Driver.\nGetting Confirmation From Driver ...")
                                 .setCancelable(false)
@@ -197,6 +204,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                         dialog.show();
 
                     } else if (snapshot.child("request").child("status").getValue().toString().equals("declined")) {
+
+                        if(dialog!=null)
+                            dialog.dismiss();
+
                         AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
                                 .setMessage("Request Declined!")
                                 .setCancelable(false)
@@ -208,8 +219,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                     } else if(snapshot.child("request").child("status").getValue().toString().equals("accepted")) {
 
                         checkGPS();
+
                         if(dialog!=null)
                             dialog.dismiss();
+
                         driverSelectedLayout.setVisibility(View.GONE);
                         requestLayout.setVisibility(View.GONE);
                         AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
@@ -220,7 +233,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                         driverSelectedKey = snapshot.child("request").child("driver_key").getValue().toString();
                         riding = true;
-                    }else{
+                    }else if(snapshot.child("request").child("status").getValue().toString().equals("completed")){
+
+                        if(dialog!=null)
+                            dialog.dismiss();
 
                         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -253,6 +269,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                                     cRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
                                     cRef.child("current_ride").removeValue();
 
+                                    map.clear();
 
                                 })
                                 .setNegativeButton("No", (dialogInterface, i) -> {
@@ -265,6 +282,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                                     cRef.child("request").removeValue();
                                     cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
                                     cRef.child("current_ride").removeValue();
+
+                                    map.clear();
                                 });
                         dialog = builder.create();
                         dialog.show();
@@ -331,15 +350,28 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
                 MarkerOptions markerOptions = new MarkerOptions();
                 markerOptions.position(l1);
-                markerOptions.title("Im here");
+                markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_blue_dot));
+                markerOptions.anchor(0.5f,0.5f);
 
                 if (cMarker.getId() != null)
                     cMarker.remove();
 
+                if(cCircle.getId() != null)
+                    cCircle.remove();
+
                 cMarker = map.addMarker(markerOptions);
                 cMarker.setTag("customer");
 
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 17));
+                CircleOptions co = new CircleOptions();
+                co.center(l1);
+                co.radius(30);
+                co.fillColor(0x154D2EFF);
+                co.strokeColor(0xee4D2EFF);
+                co.strokeWidth(1.0f);
+                cCircle = map.addCircle(co);
+                cCircle.setTag("customer");
+
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
                 getDriversAround();
                 addDrivers();
                 driversAroundText.setVisibility(View.VISIBLE);
@@ -444,7 +476,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                         driversSnap.child(key).child("number").getValue().toString(), key);
 
                 drivers.add(driver);
-
 
             }
 
@@ -598,8 +629,13 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     @Override
     public void onMapReady(GoogleMap googleMap) {
         map = googleMap;
+
         cMarker = map.addMarker(new MarkerOptions().position(new LatLng(0, 0)));
         cMarker.setTag("customer");
+
+        cCircle = map.addCircle(new CircleOptions().center(new LatLng(0,0)));
+        cCircle.setTag("customer");
+
         map.setMapStyle(MapStyleOptions.loadRawResourceStyle(CustomerMapActivity.this,R.raw.map_style));
     }
 
