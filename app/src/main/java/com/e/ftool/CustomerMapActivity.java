@@ -127,6 +127,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     ValueEventListener v1, v2;
     private LatLng driverLatLng;
     String []time_distance = new String[2];
+    LinearLayout bottom_sheet = findViewById(R.id.bottom_sheet);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -270,6 +271,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                                     cRef.child("current_ride").removeValue();
 
                                     map.clear();
+                                    riding = false;
+                                    bottom_sheet.setVisibility(View.GONE);
 
                                 })
                                 .setNegativeButton("No", (dialogInterface, i) -> {
@@ -284,6 +287,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                                     cRef.child("current_ride").removeValue();
 
                                     map.clear();
+                                    riding = false;
+                                    bottom_sheet.setVisibility(View.GONE);
                                 });
                         dialog = builder.create();
                         dialog.show();
@@ -384,9 +389,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     public void showDriverDetails() {
 
-        LinearLayout linearLayout = findViewById(R.id.bottom_sheet);
-        linearLayout.setVisibility(View.VISIBLE);
-        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(linearLayout);
+        bottom_sheet.setVisibility(View.VISIBLE);
+        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(bottom_sheet);
 
         bottomSheetBehavior.setHideable(false);
 
