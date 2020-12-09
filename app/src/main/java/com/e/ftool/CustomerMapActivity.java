@@ -109,7 +109,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     static GoogleMap map;
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
-    TextView back, driversAroundText, driverSelectedName;
+    TextView back, driverSelectedName;
     ArrayList<Driver> drivers = new ArrayList<>();
     List<Marker> driversMarkers = new ArrayList<>();
     Button request;
@@ -127,7 +127,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     ValueEventListener v1, v2;
     private LatLng driverLatLng;
     String []time_distance = new String[2];
-    LinearLayout bottom_sheet = findViewById(R.id.bottom_sheet);
+    LinearLayout bottom_sheet;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,18 +135,16 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customer_map);
 
-        Objects.requireNonNull(this.getSupportActionBar()).hide();
-
         request = findViewById(R.id.request);
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         back = findViewById(R.id.back);
-        driversAroundText = findViewById(R.id.drivers_around);
         uId = getIntent().getStringExtra("uId");
         requestLayout = findViewById(R.id.request_layout);
         driverSelectedName = findViewById(R.id.driver_selected_name);
         driverSelectedLayout = findViewById(R.id.driver_selected_layout);
         removeSelectedDriver = findViewById(R.id.remove_selected_driver);
+        bottom_sheet = findViewById(R.id.bottom_sheet);
 
         request.setOnClickListener(view -> {
 
@@ -346,7 +344,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             back.setVisibility(View.INVISIBLE);
 
             if (riding) {
-                driversAroundText.setVisibility(View.GONE);
                 dialog.dismiss();
                 drawRoute();
                 showDriverDetails();
@@ -379,7 +376,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
                 getDriversAround();
                 addDrivers();
-                driversAroundText.setVisibility(View.VISIBLE);
 
             }
 
@@ -543,7 +539,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         if (drivers.size() != 0)
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
 
-        driversAroundText.setText("Drivers Around : " + drivers.size());
     }
 
     public void drawRoute() {
@@ -808,6 +803,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         super.onDestroy();
 
         cRef.removeEventListener(v1);
-        driverLocationRef.removeEventListener(v2);
+
+        if(v2 != null)
+            driverLocationRef.removeEventListener(v2);
     }
 }

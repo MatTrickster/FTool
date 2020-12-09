@@ -46,7 +46,7 @@ public class LoginActivity extends AppCompatActivity {
 
         initialize();
 
-        noEdit.setText("7000511853");
+        noEdit.setText("9752003852");
         passEdit.setText("123456");
 
         login.setOnClickListener(view -> {
@@ -108,7 +108,7 @@ public class LoginActivity extends AppCompatActivity {
 
                             dialog.dismiss();
 
-                            Intent intent = new Intent(LoginActivity.this, CustomerMapActivity.class);
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             intent.putExtra("uId", snap.getKey());
                             startActivity(intent);
                             finish();
