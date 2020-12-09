@@ -412,7 +412,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.bottom_appbar_menu, menu);
+        getMenuInflater().inflate(R.menu.driver_menu, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -421,7 +421,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
         int id = item.getItemId();
 
-        if (id == R.id.menu) {
+        if (id == R.id.profile) {
 
             Intent intent = new Intent(DriverMapActivity.this, DriverProfileActivity.class);
             intent.putExtra("uId", uId);
