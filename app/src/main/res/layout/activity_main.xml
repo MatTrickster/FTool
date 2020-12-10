@@ -162,6 +162,140 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
+    <androidx.cardview.widget.CardView
+        app:cardCornerRadius="10dp"
+        android:layout_marginTop="160dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:textStyle="bold"
+                android:textColor="#000"
+                android:textSize="16dp"
+                android:layout_margin="8dp"
+                android:text="Your Current Order"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
+            <LinearLayout
+                android:visibility="gone"
+                android:orientation="vertical"
+                android:id="@+id/current_driver"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <RelativeLayout
+                    android:layout_margin="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:layout_marginStart="4dp"
+                        android:textColor="#000"
+                        android:text="Your Driver"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+                    <TextView
+                        android:textColor="#000"
+                        android:id="@+id/driver_rating"
+                        android:layout_alignParentEnd="true"
+                        android:text="4.5"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+                    <TextView
+                        android:textStyle="bold"
+                        android:id="@+id/status"
+                        android:textColor="#1CCF11"
+                        android:layout_marginEnd="20dp"
+                        android:layout_toStartOf="@id/driver_rating"
+                        android:text="Order Accepted"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_margin="8dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <ImageView
+                        android:layout_marginStart="10dp"
+                        android:id="@+id/driver_img"
+                        android:src="@drawable/ic_person"
+                        android:layout_width="70dp"
+                        android:layout_height="70dp"/>
+
+                    <TextView
+                        android:id="@+id/driver_name"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="10dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sourabh Patidar"
+                        android:layout_toEndOf="@id/driver_img"
+                        />
+
+                    <TextView
+                        android:id="@+id/driver_number"
+                        android:layout_marginStart="10dp"
+                        android:layout_toEndOf="@id/driver_img"
+                        android:layout_below="@id/driver_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="7000511853"
+                        />
+
+                </RelativeLayout>
+
+                <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:layout_margin="10dp"
+                        android:textColor="#DC1F1F"
+                        android:gravity="center"
+                        android:text="Cancel Order"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"/>
+
+                    <TextView
+                        android:layout_margin="10dp"
+                        android:textColor="#1CCF11"
+                        android:gravity="center"
+                        android:text="Call Driver"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"/>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/no_order"
+                android:layout_margin="10dp"
+                android:gravity="center"
+                android:text="No Current Order"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
     <ImageView
         android:id="@+id/down_gif"
         android:layout_marginBottom="100dp"

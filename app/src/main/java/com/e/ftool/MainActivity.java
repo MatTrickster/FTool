@@ -1,5 +1,6 @@
 package com.e.ftool;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
@@ -9,6 +10,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
@@ -42,9 +44,11 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -57,7 +61,7 @@ import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView temp,city,wind,humidity,driversAround;
+    TextView temp, city, wind, humidity, driversAround;
     ImageView icon;
     CardView weatherCard, driversAroundCard;
     ProgressBar progressBar1, progressBar2;
@@ -68,6 +72,16 @@ public class MainActivity extends AppCompatActivity {
     FusedLocationProviderClient fusedLocationProviderClient;
 
     String uId;
+    DatabaseReference cRef, dRef;
+    ValueEventListener v1;
+
+    LinearLayout currentDriver;
+    TextView noOrder;
+
+    String orderStatus, myDriverKey;
+    Driver myDriver;
+
+    TextView driverName, driverNumber, status;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,10 +100,83 @@ public class MainActivity extends AppCompatActivity {
         progressBar2 = findViewById(R.id.progress2);
         driversAround = findViewById(R.id.drivers_around);
         downGif = findViewById(R.id.down_gif);
+        uId = getIntent().getStringExtra("uId");
+        currentDriver = findViewById(R.id.current_driver);
+        noOrder = findViewById(R.id.no_order);
+        driverName = findViewById(R.id.driver_name);
+        driverNumber = findViewById(R.id.driver_number);
+        status = findViewById(R.id.status);
+
+        cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
+        v1 = cRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                if (snapshot.child("request").exists()) {
+
+                    noOrder.setVisibility(View.GONE);
+                    currentDriver.setVisibility(View.VISIBLE);
+
+                    myDriverKey = snapshot.child("request").child("driver_key").getValue().toString();
+                    orderStatus = snapshot.child("request").child("status").getValue().toString();
+
+                    dRef = FirebaseDatabase.getInstance().getReference("drivers/" + myDriverKey + "/");
+
+                    dRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            myDriver = new Driver(snapshot.child("name").getValue().toString(),
+                                    snapshot.child("number").getValue().toString(), "", "");
+
+                            driverName.setText(myDriver.getName());
+                            driverNumber.setText(myDriver.getNumber());
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+
+                        }
+                    });
+
+                    if (orderStatus.equals("requested")) {
+
+                        status.setText("Requested");
+                        status.setTextColor(Color.parseColor("#ED9410"));
+
+                    } else if (orderStatus.equals("declined")) {
+
+                        status.setText("Declined");
+                        status.setTextColor(Color.parseColor("#DC1F1F"));
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this)
+                                .setMessage("Request Declined!")
+                                .setCancelable(false)
+                                .setPositiveButton("Ok", (dialogInterface, i) -> {
+                                    cRef.child("request").removeValue();
+
+                                    noOrder.setVisibility(View.VISIBLE);
+                                    currentDriver.setVisibility(View.GONE);
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+
+                    } else if (orderStatus.equals("accepted")){
+
+                        status.setText("Accepted");
+                        status.setTextColor(Color.parseColor("#1CCF11"));
+
+                    }
+                }
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
 
         Glide.with(this).load(R.drawable.down_gif).into(downGif);
-
-        uId = getIntent().getStringExtra("uId");
 
         checkGPS();
 
@@ -110,13 +197,13 @@ public class MainActivity extends AppCompatActivity {
                 return;
             currentLocation = locationResult.getLastLocation();
 
-            updateWeather(currentLocation.getLatitude(),currentLocation.getLongitude());
+            updateWeather(currentLocation.getLatitude(), currentLocation.getLongitude());
 
             getDriverAround();
         }
     };
 
-    public void getDriverAround(){
+    public void getDriverAround() {
 
         DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
         GeoFire geoFire = new GeoFire(loc);
@@ -145,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onGeoQueryReady() {
 
-                driversAround.setText(""+count[0]);
+                driversAround.setText("" + count[0]);
 
             }
 
@@ -159,10 +246,10 @@ public class MainActivity extends AppCompatActivity {
         driversAroundCard.setVisibility(View.VISIBLE);
     }
 
-    public void updateWeather(Double lat,Double lng){
+    public void updateWeather(Double lat, Double lng) {
         RequestQueue queue = Volley.newRequestQueue(this);
 
-        String url ="https://api.weatherapi.com/v1/current.json?key=388fc46389584136a5b92028200912&q="+lat+","+lng;
+        String url = "https://api.weatherapi.com/v1/current.json?key=388fc46389584136a5b92028200912&q=" + lat + "," + lng;
 
         StringRequest request = new StringRequest(Request.Method.GET, url, response -> {
 
@@ -180,11 +267,11 @@ public class MainActivity extends AppCompatActivity {
                 String t = current.getString("temp_c");
                 String is_day = current.getString("is_day");
 
-                temp.setText(t.substring(0,t.indexOf(".")) + "°");
+                temp.setText(t.substring(0, t.indexOf(".")) + "°");
                 wind.setText(current.get("wind_kph") + " km/h");
                 humidity.setText(current.get("humidity") + " %");
 
-                if(is_day.equals("1"))
+                if (is_day.equals("1"))
                     icon.setImageResource(R.drawable.ic_day);
                 else
                     icon.setImageResource(R.drawable.ic_night);
@@ -192,10 +279,11 @@ public class MainActivity extends AppCompatActivity {
 
             } catch (JSONException e) {
                 e.printStackTrace();
-                Log.i("TAG","y "+e);
+                Log.i("TAG", "y " + e);
             }
 
-        }, error -> { });
+        }, error -> {
+        });
 
         queue.add(request);
     }

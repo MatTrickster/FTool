@@ -126,7 +126,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     Boolean riding = false;
     ValueEventListener v1, v2;
     private LatLng driverLatLng;
-    String []time_distance = new String[2];
+    String[] time_distance = new String[2];
     LinearLayout bottom_sheet;
 
     @Override
@@ -180,125 +180,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
                 customerSnap = snapshot;
-
-                if (snapshot.child("request").exists()) {
-                    if (snapshot.child("request").child("status").getValue().toString().equals("requested")) {
-
-                        if(dialog!=null)
-                            dialog.dismiss();
-
-                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
-                                .setMessage("Request Sent To Driver.\nGetting Confirmation From Driver ...")
-                                .setCancelable(false)
-                                .setPositiveButton("Cancel", (dialogInterface, i) -> {
-                                    driversRef.child(snapshot.child("request")
-                                            .child("driver_key").getValue().toString())
-                                            .child("customer_request").removeValue();
-                                    cRef.child("request").removeValue();
-                                    Toast.makeText(CustomerMapActivity.this, "Request Cancelled", Toast.LENGTH_SHORT)
-                                            .show();
-
-                                });
-                        dialog = builder.create();
-                        dialog.show();
-
-                    } else if (snapshot.child("request").child("status").getValue().toString().equals("declined")) {
-
-                        if(dialog!=null)
-                            dialog.dismiss();
-
-                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
-                                .setMessage("Request Declined!")
-                                .setCancelable(false)
-                                .setPositiveButton("Ok", (dialogInterface, i) -> {
-                                    cRef.child("request").removeValue();
-                                });
-                        dialog = builder.create();
-                        dialog.show();
-                    } else if(snapshot.child("request").child("status").getValue().toString().equals("accepted")) {
-
-                        checkGPS();
-
-                        if(dialog!=null)
-                            dialog.dismiss();
-
-                        driverSelectedLayout.setVisibility(View.GONE);
-                        requestLayout.setVisibility(View.GONE);
-                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
-                                .setMessage("Request Accepted!\nGetting Driver Details ...")
-                                .setCancelable(false);
-                        dialog = builder.create();
-                        dialog.show();
-
-                        driverSelectedKey = snapshot.child("request").child("driver_key").getValue().toString();
-                        riding = true;
-                    }else if(snapshot.child("request").child("status").getValue().toString().equals("completed")){
-
-                        if(dialog!=null)
-                            dialog.dismiss();
-
-                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.WRAP_CONTENT,
-                                LinearLayout.LayoutParams.WRAP_CONTENT
-                        );
-                        LinearLayout linearLayout = new LinearLayout(CustomerMapActivity.this);
-                        RatingBar ratingBar = new RatingBar(CustomerMapActivity.this);
-                        ratingBar.setLayoutParams(lp);
-                        ratingBar.setNumStars(5);
-                        ratingBar.setRating(3);
-                        linearLayout.setGravity(Gravity.CENTER_HORIZONTAL);
-                        linearLayout.addView(ratingBar);
-                        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this)
-                                .setTitle("Ride Completed!")
-                                .setMessage("Please Rate Driver!")
-                                .setCancelable(false)
-                                .setView(linearLayout)
-                                .setPositiveButton("Rate", (dialogInterface, i) -> {
-
-                                    String time = " ";
-                                    for(DataSnapshot temp :snapshot.child("current_ride").getChildren()) {
-                                        time = temp.getKey();
-                                    }
-
-                                    driversRef.child(snapshot.child("request").child("driver_key").getValue().toString())
-                                            .child("history").child(time).child("rating")
-                                            .setValue(String.valueOf(ratingBar.getRating()));
-                                    cRef.child("request").removeValue();
-                                    cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
-                                    cRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
-                                    cRef.child("current_ride").removeValue();
-
-                                    map.clear();
-                                    riding = false;
-                                    bottom_sheet.setVisibility(View.GONE);
-
-                                })
-                                .setNegativeButton("No", (dialogInterface, i) -> {
-
-                                    String time = " ";
-                                    for(DataSnapshot temp :snapshot.child("current_ride").getChildren()) {
-                                        time = temp.getKey();
-                                    }
-
-                                    cRef.child("request").removeValue();
-                                    cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
-                                    cRef.child("current_ride").removeValue();
-
-                                    map.clear();
-                                    riding = false;
-                                    bottom_sheet.setVisibility(View.GONE);
-                                });
-                        dialog = builder.create();
-                        dialog.show();
-
-                    }
-                }
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
+            public void onCancelled(@NonNull DatabaseError error) {}
         });
 
         checkGPS();
@@ -329,6 +214,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             cRef.child("request").setValue(map1);
 
             Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
+
+            finish();
         }
 
     }
@@ -353,12 +240,12 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 MarkerOptions markerOptions = new MarkerOptions();
                 markerOptions.position(l1);
                 markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_blue_dot));
-                markerOptions.anchor(0.5f,0.5f);
+                markerOptions.anchor(0.5f, 0.5f);
 
                 if (cMarker.getId() != null)
                     cMarker.remove();
 
-                if(cCircle.getId() != null)
+                if (cCircle.getId() != null)
                     cCircle.remove();
 
                 cMarker = map.addMarker(markerOptions);
@@ -406,13 +293,13 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         TextView driverDistance = findViewById(R.id.user_sheet_distance);
 
         if (time_distance[0] == null)
-           driverDistance.setText("Fetching Time and Distance ...");
+            driverDistance.setText("Fetching Time and Distance ...");
         else
             driverDistance.setText("Distance : " + time_distance[0] + "\t\tETA : " + time_distance[1]);
 
-        driverName.setText("Driver Name\t\t\t:\t\t"+driversSnap
+        driverName.setText("Driver Name\t\t\t:\t\t" + driversSnap
                 .child(driverSelectedKey).child("name").getValue().toString());
-        driverNumber.setText("Driver Number\t\t:\t\t"+driversSnap
+        driverNumber.setText("Driver Number\t\t:\t\t" + driversSnap
                 .child(driverSelectedKey).child("number").getValue().toString());
 
         Button callDriver = findViewById(R.id.call_user);
@@ -421,9 +308,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             if (ContextCompat.checkSelfPermission(CustomerMapActivity.this,
                     Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(CustomerMapActivity.this,
-                        new String[]{Manifest.permission.CALL_PHONE},100);
+                        new String[]{Manifest.permission.CALL_PHONE}, 100);
 
-            }else {
+            } else {
 
                 Intent callIntent = new Intent(Intent.ACTION_CALL);
                 callIntent.setData(Uri.parse("tel:" + driversSnap
@@ -437,7 +324,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if(requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Intent callIntent = new Intent(Intent.ACTION_CALL);
             callIntent.setData(Uri.parse("tel:" + driversSnap
                     .child(driverSelectedKey).child("number").getValue().toString()));
@@ -581,7 +468,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                             currentLocation.getLatitude(),
                             currentLocation.getLongitude()
                     ), driverLatLng)).get();
-                    Log.i("TAG",""+s);
+                    Log.i("TAG", "" + s);
                 } catch (ExecutionException | InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -632,10 +519,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         cMarker = map.addMarker(new MarkerOptions().position(new LatLng(0, 0)));
         cMarker.setTag("customer");
 
-        cCircle = map.addCircle(new CircleOptions().center(new LatLng(0,0)));
+        cCircle = map.addCircle(new CircleOptions().center(new LatLng(0, 0)));
         cCircle.setTag("customer");
 
-        map.setMapStyle(MapStyleOptions.loadRawResourceStyle(CustomerMapActivity.this,R.raw.map_style));
+        map.setMapStyle(MapStyleOptions.loadRawResourceStyle(CustomerMapActivity.this, R.raw.map_style));
     }
 
     @Override
@@ -774,8 +661,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                     if (x == 1) {
                         time_distance[0] = point.get("distance");
                         continue;
-                    }
-                    else if(x == 2){
+                    } else if (x == 2) {
                         time_distance[1] = point.get("duration");
                         continue;
                     }
@@ -802,9 +688,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     protected void onDestroy() {
         super.onDestroy();
 
-        cRef.removeEventListener(v1);
+        if (v1 != null)
+            cRef.removeEventListener(v1);
 
-        if(v2 != null)
+        if (v2 != null)
             driverLocationRef.removeEventListener(v2);
     }
 }
