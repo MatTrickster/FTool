@@ -98,7 +98,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                     Toast.makeText(DriverMapActivity.this, "Add Atleast 1 Service",
                             Toast.LENGTH_SHORT).show();
 
-                    Intent intent = new Intent(DriverMapActivity.this, DriverProfileActivity.class);
+                    Intent intent = new Intent(DriverMapActivity.this, ProfileActivity.class);
                     intent.putExtra("uId", uId);
                     startActivity(intent);
 
@@ -423,7 +423,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
         if (id == R.id.profile) {
 
-            Intent intent = new Intent(DriverMapActivity.this, DriverProfileActivity.class);
+            Intent intent = new Intent(DriverMapActivity.this, ProfileActivity.class);
             intent.putExtra("uId", uId);
             startActivity(intent);
 

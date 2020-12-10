@@ -1,21 +1,18 @@
 package com.e.ftool;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.location.Location;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,36 +27,48 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DriverProfileActivity extends AppCompatActivity {
+public class ProfileActivity extends AppCompatActivity {
 
     TextView noService;
-    EditText driverName, driverNumber;
+    EditText name, number;
     String uId;
     Button addService;
     RecyclerView recyclerView;
     ArrayList<HashMap<String,String>> services = new ArrayList<>();
     DataSnapshot snap;
+    DatabaseReference reference;
+    String user;
+    LinearLayout servicesLayout;
+    ServicesAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_driver_profile);
+        setContentView(R.layout.activity_profile);
 
         uId = getIntent().getStringExtra("uId");
         recyclerView = findViewById(R.id.services_recycler);
         addService = findViewById(R.id.add_service);
-        driverName = findViewById(R.id.driver_name);
-        driverNumber = findViewById(R.id.driver_number);
+        name = findViewById(R.id.name);
+        number = findViewById(R.id.number);
         noService = findViewById(R.id.no_service);
+        servicesLayout = findViewById(R.id.services);
 
-        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("drivers/" + uId + "/");
+        user = getIntent().getStringExtra("user");
+        if(user.equals("d")) {
+            reference = FirebaseDatabase.getInstance().getReference("drivers/" + uId + "/");
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        layoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
-        recyclerView.setLayoutManager(layoutManager);
+            LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+            layoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
+            recyclerView.setLayoutManager(layoutManager);
 
-        ServicesAdapter adapter = new ServicesAdapter(DriverProfileActivity.this,services,reference);
-        recyclerView.setAdapter(adapter);
+            adapter = new ServicesAdapter(ProfileActivity.this,services,reference);
+            recyclerView.setAdapter(adapter);
+        }
+        else {
+            reference = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
+            servicesLayout.setVisibility(View.GONE);
+        }
 
         reference.addValueEventListener(new ValueEventListener() {
             @Override
@@ -69,27 +78,30 @@ public class DriverProfileActivity extends AppCompatActivity {
 
                 snap = snapshot;
 
-                driverName.setText(snapshot.child("name").getValue().toString());
-                driverNumber.setText(snapshot.child("number").getValue().toString());
+                name.setText(snapshot.child("name").getValue().toString());
+                number.setText(snapshot.child("number").getValue().toString());
 
-                if (snapshot.child("services").getChildrenCount() == 0) {
-                    recyclerView.setVisibility(View.GONE);
-                    noService.setVisibility(View.VISIBLE);
-                }else{
+                if(user.equals("d")) {
 
-                    for(DataSnapshot snap : snapshot.child("services").getChildren()){
+                    if (snapshot.child("services").getChildrenCount() == 0) {
+                        recyclerView.setVisibility(View.GONE);
+                        noService.setVisibility(View.VISIBLE);
+                    } else {
 
-                        HashMap<String, String> hash = new HashMap<>();
-                        hash.put("charge",snap.child("charge").getValue().toString());
-                        hash.put("title",snap.getKey());
+                        for (DataSnapshot snap : snapshot.child("services").getChildren()) {
 
-                        services.add(hash);
+                            HashMap<String, String> hash = new HashMap<>();
+                            hash.put("charge", snap.child("charge").getValue().toString());
+                            hash.put("title", snap.getKey());
 
+                            services.add(hash);
+
+                        }
+
+                        adapter.notifyDataSetChanged();
+                        recyclerView.setVisibility(View.VISIBLE);
+                        noService.setVisibility(View.GONE);
                     }
-
-                    adapter.notifyDataSetChanged();
-                    recyclerView.setVisibility(View.VISIBLE);
-                    noService.setVisibility(View.GONE);
                 }
             }
 
@@ -104,7 +116,7 @@ public class DriverProfileActivity extends AppCompatActivity {
 
             View dView = LayoutInflater.from(getApplicationContext()).inflate(R.layout.add_service, null);
 
-            AlertDialog.Builder builder = new AlertDialog.Builder(DriverProfileActivity.this)
+            AlertDialog.Builder builder = new AlertDialog.Builder(ProfileActivity.this)
                     .setTitle("Select Service")
                     .setView(dView)
                     .setPositiveButton("ADD", (dialogInterface, i) -> { })
@@ -131,7 +143,7 @@ public class DriverProfileActivity extends AppCompatActivity {
 
                     for(DataSnapshot s1 : snap.child("services").getChildren()){
                         if(s1.getKey().equals(text)){
-                            Toast.makeText(DriverProfileActivity.this,"Service Already Available",
+                            Toast.makeText(ProfileActivity.this,"Service Already Available",
                                     Toast.LENGTH_SHORT).show();
                             return;
                         }
@@ -141,7 +153,7 @@ public class DriverProfileActivity extends AppCompatActivity {
                     map.put("charge", priceEdit.getText().toString());
                     reference.child("services").child(text).setValue(map);
 
-                    Toast.makeText(DriverProfileActivity.this,"Service Added Successfully",
+                    Toast.makeText(ProfileActivity.this,"Service Added Successfully",
                             Toast.LENGTH_SHORT).show();
 
                     dialog.dismiss();
@@ -157,12 +169,17 @@ public class DriverProfileActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
 
-        if(services.size()<1){
+        if(user.equals("d")) {
 
-            Toast.makeText(DriverProfileActivity.this,"Atleast 1 Service Required",Toast.LENGTH_SHORT).show();
+            if (services.size() < 1) {
 
-        }else{
-            super.onBackPressed();
+                Toast.makeText(ProfileActivity.this, "Atleast 1 Service Required", Toast.LENGTH_SHORT).show();
+
+            } else {
+                super.onBackPressed();
+            }
         }
+
+        super.onBackPressed();
     }
 }

@@ -118,6 +118,4 @@
         android:translationZ="90dp"
         />
 
-    <include layout="@layout/driver_details_sheet" />
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -122,12 +122,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     String driverSelectedKey;
     LinearLayout requestLayout, driverSelectedLayout;
     ImageView removeSelectedDriver;
-    AlertDialog dialog;
-    Boolean riding = false;
+    Boolean riding;
     ValueEventListener v1, v2;
     private LatLng driverLatLng;
     String[] time_distance = new String[2];
-    LinearLayout bottom_sheet;
+    Boolean alreadyRequested = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -140,20 +139,29 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         mapFragment.getMapAsync(this);
         back = findViewById(R.id.back);
         uId = getIntent().getStringExtra("uId");
+        riding = getIntent().getBooleanExtra("riding",false);
+        driverSelectedKey = getIntent().getStringExtra("driver_key");
+        alreadyRequested = getIntent().getBooleanExtra("requested",false);
         requestLayout = findViewById(R.id.request_layout);
         driverSelectedName = findViewById(R.id.driver_selected_name);
         driverSelectedLayout = findViewById(R.id.driver_selected_layout);
         removeSelectedDriver = findViewById(R.id.remove_selected_driver);
-        bottom_sheet = findViewById(R.id.bottom_sheet);
 
         request.setOnClickListener(view -> {
 
-            RadioGroup radioGroup = findViewById(R.id.radioGroup);
-            RadioButton radioButton = findViewById(radioGroup.getCheckedRadioButtonId());
+            if(alreadyRequested){
 
-            String serviceRequested = radioButton.getText().toString();
+                Toast.makeText(CustomerMapActivity.this,"Already One Ongoing Order",Toast.LENGTH_SHORT).show();
 
-            request(serviceRequested, driverSelectedKey);
+            }else {
+
+                RadioGroup radioGroup = findViewById(R.id.radioGroup);
+                RadioButton radioButton = findViewById(radioGroup.getCheckedRadioButtonId());
+
+                String serviceRequested = radioButton.getText().toString();
+
+                request(serviceRequested, driverSelectedKey);
+            }
         });
 
         removeSelectedDriver.setOnClickListener(view -> {
@@ -169,9 +177,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
+            public void onCancelled(@NonNull DatabaseError error) { }
         });
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
@@ -180,6 +186,10 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
                 customerSnap = snapshot;
+
+                if(snapshot.child("request").exists())
+                    if(snapshot.child("request").child("status").getValue().toString().equals("completed"))
+                        finish();
             }
 
             @Override
@@ -231,9 +241,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             back.setVisibility(View.INVISIBLE);
 
             if (riding) {
-                dialog.dismiss();
                 drawRoute();
-                showDriverDetails();
             } else {
 
                 LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
@@ -269,56 +277,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         }
     };
-
-    public void showDriverDetails() {
-
-        bottom_sheet.setVisibility(View.VISIBLE);
-        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(bottom_sheet);
-
-        bottomSheetBehavior.setHideable(false);
-
-        ImageView imageView = findViewById(R.id.click);
-        imageView.setOnClickListener(view -> {
-            if (bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED) {
-                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                imageView.setImageResource(R.drawable.ic_down);
-            } else {
-                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
-                imageView.setImageResource(R.drawable.ic_up);
-            }
-        });
-
-        TextView driverName = findViewById(R.id.user_sheet_name);
-        TextView driverNumber = findViewById(R.id.user_sheet_number);
-        TextView driverDistance = findViewById(R.id.user_sheet_distance);
-
-        if (time_distance[0] == null)
-            driverDistance.setText("Fetching Time and Distance ...");
-        else
-            driverDistance.setText("Distance : " + time_distance[0] + "\t\tETA : " + time_distance[1]);
-
-        driverName.setText("Driver Name\t\t\t:\t\t" + driversSnap
-                .child(driverSelectedKey).child("name").getValue().toString());
-        driverNumber.setText("Driver Number\t\t:\t\t" + driversSnap
-                .child(driverSelectedKey).child("number").getValue().toString());
-
-        Button callDriver = findViewById(R.id.call_user);
-        callDriver.setOnClickListener(view -> {
-
-            if (ContextCompat.checkSelfPermission(CustomerMapActivity.this,
-                    Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(CustomerMapActivity.this,
-                        new String[]{Manifest.permission.CALL_PHONE}, 100);
-
-            } else {
-
-                Intent callIntent = new Intent(Intent.ACTION_CALL);
-                callIntent.setData(Uri.parse("tel:" + driversSnap
-                        .child(driverSelectedKey).child("number").getValue().toString()));
-                startActivity(callIntent);
-            }
-        });
-    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {

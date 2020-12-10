@@ -145,6 +145,9 @@ public class RegisterActivity extends AppCompatActivity {
 
             reference.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(user);
 
+            if(spinner.getSelectedItemPosition() == 1)
+                reference.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("rating").setValue("0.0");
+
             Toast.makeText(RegisterActivity.this,"Sign Up Successful",Toast.LENGTH_SHORT).show();
             finish();
 

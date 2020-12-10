@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -13,15 +14,21 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RatingBar;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,6 +51,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -64,10 +72,8 @@ public class MainActivity extends AppCompatActivity {
     TextView temp, city, wind, humidity, driversAround;
     ImageView icon;
     CardView weatherCard, driversAroundCard;
-    ProgressBar progressBar1, progressBar2;
+    ProgressBar progressBar1, progressBar2, progressBar3;
     FloatingActionButton book;
-    ImageView downGif;
-
     Location currentLocation;
     FusedLocationProviderClient fusedLocationProviderClient;
 
@@ -81,7 +87,10 @@ public class MainActivity extends AppCompatActivity {
     String orderStatus, myDriverKey;
     Driver myDriver;
 
-    TextView driverName, driverNumber, status;
+    TextView driverName, driverNumber, driverRating, status;
+    TextView callDriver, cancelOrder;
+
+    RelativeLayout viewDriver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,19 +107,25 @@ public class MainActivity extends AppCompatActivity {
         book = findViewById(R.id.book);
         driversAroundCard = findViewById(R.id.drivers_around_card);
         progressBar2 = findViewById(R.id.progress2);
+        progressBar3 = findViewById(R.id.progress3);
         driversAround = findViewById(R.id.drivers_around);
-        downGif = findViewById(R.id.down_gif);
         uId = getIntent().getStringExtra("uId");
         currentDriver = findViewById(R.id.current_driver);
         noOrder = findViewById(R.id.no_order);
         driverName = findViewById(R.id.driver_name);
         driverNumber = findViewById(R.id.driver_number);
+        driverRating = findViewById(R.id.driver_rating);
         status = findViewById(R.id.status);
+        callDriver = findViewById(R.id.call_driver);
+        cancelOrder = findViewById(R.id.cancel_order);
+        viewDriver = findViewById(R.id.view_driver);
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
         v1 = cRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                orderStatus = null;
 
                 if (snapshot.child("request").exists()) {
 
@@ -126,10 +141,14 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
                             myDriver = new Driver(snapshot.child("name").getValue().toString(),
-                                    snapshot.child("number").getValue().toString(), "", "");
+                                    snapshot.child("number").getValue().toString(), "",
+                                    snapshot.child("rating").getValue().toString());
 
                             driverName.setText(myDriver.getName());
                             driverNumber.setText(myDriver.getNumber());
+                            driverRating.setText(myDriver.getRating());
+
+                            progressBar3.setVisibility(View.GONE);
                         }
 
                         @Override
@@ -160,12 +179,67 @@ public class MainActivity extends AppCompatActivity {
                         AlertDialog dialog = builder.create();
                         dialog.show();
 
-                    } else if (orderStatus.equals("accepted")){
+                    } else if (orderStatus.equals("accepted")) {
 
                         status.setText("Accepted");
                         status.setTextColor(Color.parseColor("#1CCF11"));
 
+                    } else if (orderStatus.equals("completed")) {
+
+                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                        );
+                        LinearLayout linearLayout = new LinearLayout(MainActivity.this);
+                        RatingBar ratingBar = new RatingBar(MainActivity.this);
+                        ratingBar.setLayoutParams(lp);
+                        ratingBar.setNumStars(5);
+                        ratingBar.setRating(3);
+                        linearLayout.setGravity(Gravity.CENTER_HORIZONTAL);
+                        linearLayout.addView(ratingBar);
+                        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Ride Completed!")
+                                .setMessage("Please Rate Driver!")
+                                .setCancelable(false)
+                                .setView(linearLayout)
+                                .setPositiveButton("Rate", (dialogInterface, i) -> {
+
+                                    String time = " ";
+                                    for (DataSnapshot temp : snapshot.child("current_ride").getChildren()) {
+                                        time = temp.getKey();
+                                    }
+
+                                    dRef.child(snapshot.child("request").child("driver_key").getValue().toString())
+                                            .child("history").child(time).child("rating")
+                                            .setValue(String.valueOf(ratingBar.getRating()));
+                                    cRef.child("request").removeValue();
+                                    cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
+                                    cRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
+                                    cRef.child("current_ride").removeValue();
+
+                                    noOrder.setVisibility(View.VISIBLE);
+                                    currentDriver.setVisibility(View.GONE);
+                                })
+                                .setNegativeButton("No", (dialogInterface, i) -> {
+
+                                    String time = " ";
+                                    for (DataSnapshot temp : snapshot.child("current_ride").getChildren()) {
+                                        time = temp.getKey();
+                                    }
+
+                                    cRef.child("request").removeValue();
+                                    cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
+                                    cRef.child("current_ride").removeValue();
+
+                                    noOrder.setVisibility(View.VISIBLE);
+                                    currentDriver.setVisibility(View.GONE);
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+
                     }
+                } else {
+                    progressBar3.setVisibility(View.GONE);
                 }
 
             }
@@ -176,16 +250,63 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Glide.with(this).load(R.drawable.down_gif).into(downGif);
-
         checkGPS();
 
         book.setOnClickListener(view -> {
 
             Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
             intent.putExtra("uId", uId);
+            intent.putExtra("requested", orderStatus!=null);
             startActivity(intent);
 
+        });
+
+        callDriver.setOnClickListener(view -> {
+
+            if (ContextCompat.checkSelfPermission(MainActivity.this,
+                    Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(MainActivity.this,
+                        new String[]{Manifest.permission.CALL_PHONE}, 100);
+
+            } else {
+
+                Intent callIntent = new Intent(Intent.ACTION_CALL);
+                callIntent.setData(Uri.parse("tel:" + myDriver.getNumber()));
+                startActivity(callIntent);
+            }
+
+        });
+
+        cancelOrder.setOnClickListener(view -> {
+
+            if (orderStatus.equals("requested")) {
+
+                cRef.child("request").removeValue();
+
+                noOrder.setVisibility(View.VISIBLE);
+                currentDriver.setVisibility(View.GONE);
+            } else {
+                Toast.makeText(MainActivity.this, "Order is Accepted, Cannot be cancelled Now!",
+                        Toast.LENGTH_SHORT).show();
+            }
+
+        });
+
+        viewDriver.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if (orderStatus.equals("accepted")) {
+
+                    Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
+                    intent.putExtra("uId", uId);
+                    intent.putExtra("riding", true);
+                    intent.putExtra("driver_key", myDriverKey);
+                    startActivity(intent);
+
+                } else
+                    Toast.makeText(MainActivity.this, "Order Not Accepted Yet", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -202,6 +323,17 @@ public class MainActivity extends AppCompatActivity {
             getDriverAround();
         }
     };
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Intent callIntent = new Intent(Intent.ACTION_CALL);
+            callIntent.setData(Uri.parse("tel:" + myDriver.getNumber()));
+            startActivity(callIntent);
+        }
+    }
 
     public void getDriverAround() {
 
@@ -346,5 +478,21 @@ public class MainActivity extends AppCompatActivity {
 
         if (fusedLocationProviderClient != null)
             fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        cRef.removeEventListener(v1);
+    }
+
+    public void Profile(View v){
+
+        Intent intent = new Intent(MainActivity.this,ProfileActivity.class);
+        intent.putExtra("uId",uId);
+        intent.putExtra("user","c");
+        startActivity(intent);
+
     }
 }

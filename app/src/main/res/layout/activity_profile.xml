@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".DriverProfileActivity">
+    tools:context=".ProfileActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,8 +26,8 @@
             <com.google.android.material.textfield.TextInputEditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/driver_name"
-                android:hint="Driver Name"/>
+                android:id="@+id/name"
+                android:hint="Name"/>
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -40,44 +40,53 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:enabled="false"
-                android:id="@+id/driver_number"
+                android:id="@+id/number"
                 android:hint="Contact Number"
                 />
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <TextView
+        <LinearLayout
+            android:id="@+id/services"
+            android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:text="Services"
-            android:textColor="#000"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            android:layout_height="wrap_content">
 
-        <TextView
-            android:id="@+id/no_service"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:gravity="center"
-            android:text="No Service"
-            android:textSize="18sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:text="Services"
+                android:textColor="#000"
+                android:textSize="22sp"
+                android:textStyle="bold" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/services_recycler"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp">
+            <TextView
+                android:id="@+id/no_service"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:gravity="center"
+                android:text="No Service"
+                android:textSize="18sp" />
 
-        </androidx.recyclerview.widget.RecyclerView>
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/services_recycler"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp">
 
-        <Button
-            android:id="@+id/add_service"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:text="+ Add Service" />
+            </androidx.recyclerview.widget.RecyclerView>
+
+            <Button
+                android:id="@+id/add_service"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:text="+ Add Service" />
+
+        </LinearLayout>
+
 
     </LinearLayout>
 

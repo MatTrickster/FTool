@@ -5,6 +5,7 @@
     android:layout_height="wrap_content">
 
     <LinearLayout
+        android:id="@+id/history"
         android:orientation="vertical"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
@@ -26,6 +27,8 @@
     </LinearLayout>
 
     <LinearLayout
+        android:onClick="Profile"
+        android:id="@+id/profile"
         android:layout_marginEnd="16dp"
         android:layout_alignParentEnd="true"
         android:orientation="vertical"
