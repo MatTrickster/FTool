@@ -1,26 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:sothree="http://schemas.android.com/apk/res-auto"
-    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/white"
     android:orientation="vertical"
-    tools:context="com.e.ftool.CustomerMapActivity"
-    >
+    tools:context="com.e.ftool.CustomerMapActivity">
 
     <fragment
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        />
-    
+        android:layout_height="match_parent" />
+
     <LinearLayout
         android:visibility="gone"
-        sothree:layout_anchor="@id/request_layout"
-        android:paddingBottom="30dp"
+        android:layout_gravity="top"
         android:id="@+id/driver_selected_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -28,7 +24,7 @@
         android:layout_marginEnd="20dp"
         android:background="#fff"
         android:orientation="horizontal"
-        >
+        sothree:layout_anchor="@id/request">
 
         <TextView
             android:id="@+id/driver_selected_name"
@@ -52,59 +48,14 @@
 
     </LinearLayout>
 
-    <LinearLayout
+    <Button
         android:visibility="gone"
+        android:layout_margin="10dp"
         android:layout_gravity="bottom"
-        android:id="@+id/request_layout"
+        android:id="@+id/request"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="10dp"
-        android:background="#FFF"
-        android:orientation="vertical"
-        >
-
-        <RadioGroup
-            android:id="@+id/radioGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:orientation="horizontal">
-
-            <RadioButton
-                android:id="@+id/tractor"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:checked="true"
-                android:text="Tractor" />
-
-            <RadioButton
-                android:id="@+id/jcb"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="JCB" />
-
-            <RadioButton
-                android:id="@+id/rotavator"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Rotavator" />
-        </RadioGroup>
-
-        <Button
-            android:id="@+id/request"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:text="Request" />
-
-    </LinearLayout>
+        android:text="Request" />
 
     <TextView
         android:id="@+id/back"
@@ -112,7 +63,7 @@
         android:layout_height="match_parent"
         android:background="#fff"
         android:gravity="center"
-        android:text="Getting Location ..."
+        android:text="Getting Driver ..."
         android:textSize="20sp"
         android:textStyle="bold"
         android:translationZ="90dp"

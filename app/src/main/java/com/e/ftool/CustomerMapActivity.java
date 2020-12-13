@@ -120,13 +120,14 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     DataSnapshot driversSnap, customerSnap;
     static Polyline polyline = null;
     String driverSelectedKey;
-    LinearLayout requestLayout, driverSelectedLayout;
+    LinearLayout driverSelectedLayout;
     ImageView removeSelectedDriver;
     Boolean riding;
     ValueEventListener v1, v2;
     private LatLng driverLatLng;
     String[] time_distance = new String[2];
     Boolean alreadyRequested = false;
+    String desiredService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,7 +143,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         riding = getIntent().getBooleanExtra("riding",false);
         driverSelectedKey = getIntent().getStringExtra("driver_key");
         alreadyRequested = getIntent().getBooleanExtra("requested",false);
-        requestLayout = findViewById(R.id.request_layout);
+        desiredService = getIntent().getStringExtra("service");
         driverSelectedName = findViewById(R.id.driver_selected_name);
         driverSelectedLayout = findViewById(R.id.driver_selected_layout);
         removeSelectedDriver = findViewById(R.id.remove_selected_driver);
@@ -155,18 +156,13 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
             }else {
 
-                RadioGroup radioGroup = findViewById(R.id.radioGroup);
-                RadioButton radioButton = findViewById(radioGroup.getCheckedRadioButtonId());
-
-                String serviceRequested = radioButton.getText().toString();
-
-                request(serviceRequested, driverSelectedKey);
+                request(desiredService, driverSelectedKey);
             }
         });
 
         removeSelectedDriver.setOnClickListener(view -> {
             driverSelectedLayout.setVisibility(View.GONE);
-            requestLayout.setVisibility(View.GONE);
+            request.setVisibility(View.GONE);
         });
 
         driversRef = FirebaseDatabase.getInstance().getReference("drivers/");
@@ -270,10 +266,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
                 getDriversAround();
-                addDrivers();
 
             }
-
 
         }
     };
@@ -292,56 +286,67 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     public void getDriversAround() {
 
-        final DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
-        final GeoFire geoFire = new GeoFire(loc);
-        final GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(currentLocation.getLongitude(), currentLocation.getLatitude())
-                , 10000);
-        geoQuery.removeAllListeners();
+        DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
 
-        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+        loc.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onKeyEntered(String key, GeoLocation location) {
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                for (Driver d : drivers) {
-                    if (d.getKey().equals(key))
-                        return;
+                for(DataSnapshot snap : snapshot.getChildren()){
+
+                    double lat = Double.parseDouble(snap.child("lat").getValue().toString());
+                    double lng = Double.parseDouble(snap.child("lng").getValue().toString());
+
+                    Location location = new Location("");
+                    location.setLatitude(lat);
+                    location.setLongitude(lng);
+
+                    float dis = currentLocation.distanceTo(location);
+                    if(dis<10000){
+
+                        boolean desiredServiceMatches = false;
+
+                        LatLng driverLocation = new LatLng(lat, lng);
+                        ArrayList<HashMap<String, String>> service = new ArrayList<>();
+
+                        for (DataSnapshot snap1 : driversSnap.child(snap.getKey()).child("services").getChildren()) {
+                            HashMap<String, String> m = new HashMap<>();
+                            m.put("title", snap1.getKey());
+                            m.put("charge", snap1.child("charge").getValue().toString());
+                            service.add(m);
+
+                            if(snap1.getKey().toString().equals(desiredService))
+                                desiredServiceMatches = true;
+                        }
+
+                        if(!desiredServiceMatches){
+                            continue;
+                        }
+
+                        Driver driver = new Driver(driverLocation, service,
+                                driversSnap.child(snap.getKey()).child("name").getValue().toString(),
+                                driversSnap.child(snap.getKey()).child("number").getValue().toString(), snap.getKey());
+
+                        drivers.add(driver);
+
+                    }
+
                 }
 
-                LatLng driverLocation = new LatLng(location.latitude, location.longitude);
-                ArrayList<HashMap<String, String>> service = new ArrayList<>();
-
-                for (DataSnapshot snap : driversSnap.child(key).child("services").getChildren()) {
-                    HashMap<String, String> m = new HashMap<>();
-                    m.put("title", snap.getKey());
-                    m.put("charge", snap.child("charge").getValue().toString());
-                    service.add(m);
+                if(drivers.size() == 0){
+                    Toast.makeText(CustomerMapActivity.this,"Desired Service Not Available",
+                            Toast.LENGTH_SHORT).show();
+                    finish();
                 }
-
-                Driver driver = new Driver(driverLocation, service, driversSnap.child(key).child("name").getValue().toString(),
-                        driversSnap.child(key).child("number").getValue().toString(), key);
-
-                drivers.add(driver);
-
+                else
+                    addDrivers();
             }
 
             @Override
-            public void onKeyExited(String key) {
-            }
+            public void onCancelled(@NonNull DatabaseError error) {
 
-            @Override
-            public void onKeyMoved(String key, GeoLocation location) {
-
-            }
-
-            @Override
-            public void onGeoQueryReady() {
-            }
-
-            @Override
-            public void onGeoQueryError(DatabaseError error) {
             }
         });
-
     }
 
     public void addDrivers() {
@@ -373,7 +378,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             for (int i = 0; i < driversMarkers.size(); i++) {
                 if (driversMarkers.get(i).getTag().equals(marker.getTag())) {
                     driverSelectedKey = drivers.get(i).getKey();
-                    requestLayout.setVisibility(View.VISIBLE);
+                    request.setVisibility(View.VISIBLE);
                     driverSelectedName.setText("Driver Selected : " + drivers.get(i).getName());
                     driverSelectedLayout.setVisibility(View.VISIBLE);
                     break;

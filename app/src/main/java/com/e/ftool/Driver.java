@@ -12,13 +12,14 @@ public class Driver {
 
     LatLng location;
     ArrayList<HashMap<String,String>> services;
-    String name,number,key,service,rating;
+    String name,number,key,service,rating,imgUrl;
 
-    Driver(String name,String number,String service,String rating){
+    Driver(String name,String number,String service,String rating,String imgUrl){
         this.name = name;
         this.number = number;
         this.service = service;
         this.rating = rating;
+        this.imgUrl = imgUrl;
     }
 
     Driver(LatLng location,ArrayList<HashMap<String,String>> services, String name,String number,String key){
@@ -27,6 +28,14 @@ public class Driver {
         this.number = number;
         this.services = services;
         this.key = key;
+    }
+
+    public void setImgUrl(String imgUrl) {
+        this.imgUrl = imgUrl;
+    }
+
+    public String getImgUrl() {
+        return imgUrl;
     }
 
     public void setRating(String rating) {

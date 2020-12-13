@@ -1,48 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<androidx.cardview.widget.CardView app:cardCornerRadius="10dp"
+<com.google.android.material.card.MaterialCardView
+    app:cardCornerRadius="10dp"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="180dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/tractor"
+    android:layout_width="100dp"
     android:layout_height="wrap_content"
     android:layout_margin="10dp"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    app:strokeColor="#000"
+    app:strokeWidth="0.5dp">
 
     <LinearLayout
-        android:layout_width="180dp"
-        android:orientation="vertical"
-        android:layout_height="wrap_content">
+        android:id="@+id/layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:orientation="vertical">
 
         <ImageView
-            android:layout_marginTop="10dp"
             android:id="@+id/service_icon"
-            android:src="@mipmap/ic_tractor"
             android:layout_width="match_parent"
-            android:layout_height="100dp"/>
+            android:layout_height="60dp"
+            android:src="@mipmap/ic_tractor1" />
 
         <TextView
-            android:id="@+id/service_title"
             android:textStyle="bold"
-            android:layout_marginTop="10dp"
-            android:textColor="#000"
-            android:textSize="20sp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="Title"
-            />
-
-        <TextView
-            android:layout_marginBottom="10dp"
-            android:id="@+id/remove_service"
-            android:layout_marginTop="8dp"
+            android:layout_margin="4dp"
             android:textColor="#000"
             android:textSize="16sp"
+            android:id="@+id/service_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Remove"
-            />
+            android:text="Tractor" />
+
+        <TextView
+            android:layout_margin="4dp"
+            android:id="@+id/remove_service"
+            android:textColor="#000"
+            android:textSize="14sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Remove"/>
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>
+

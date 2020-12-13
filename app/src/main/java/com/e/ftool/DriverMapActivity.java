@@ -57,7 +57,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     TextView back;
     Polyline polyline = null;
     String uId, cId;
-    DatabaseReference cRef, ref, reference;
+    DatabaseReference cRef, ref, driversAroundLoc;
     ValueEventListener v1;
     Customer customer;
     Boolean occupied = false;
@@ -77,7 +77,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         uId = getIntent().getStringExtra("uId");
         ref = FirebaseDatabase.getInstance().getReference("drivers").child(uId);
         cRef = FirebaseDatabase.getInstance().getReference("customers");
-        reference = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
+        driversAroundLoc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
         completeRide = findViewById(R.id.complete_ride);
 
         completeRide.setOnClickListener(view -> {
@@ -100,6 +100,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                     Intent intent = new Intent(DriverMapActivity.this, ProfileActivity.class);
                     intent.putExtra("uId", uId);
+                    intent.putExtra("user","d");
                     startActivity(intent);
 
                 }
@@ -109,7 +110,8 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                     completeRide.setVisibility(View.VISIBLE);
 
                     driver = new Driver(snapshot.child("name").getValue().toString(), snapshot.child("number").getValue()
-                            .toString(), snapshot.child("customer_request").child("service").getValue().toString(), "0");
+                            .toString(), snapshot.child("customer_request").child("service").getValue().toString(), "0",
+                            snapshot.child("photo_url").exists()?snapshot.child("photo_url").getValue().toString():"null");
 
                     cId = snapshot.child("customer_request").child("uId").getValue().toString();
 
@@ -199,6 +201,11 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 return;
             currentLocation = locationResult.getLastLocation();
 
+            HashMap<String,Double> m = new HashMap<>();
+            m.put("lat",currentLocation.getLatitude());
+            m.put("lng",currentLocation.getLongitude());
+            driversAroundLoc.child(uId).setValue(m);
+
             back.setVisibility(View.INVISIBLE);
 
             if (occupied) {
@@ -231,13 +238,6 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
             }
 
-            GeoFire geoFire = new GeoFire(reference);
-            geoFire.setLocation(uId, new GeoLocation(currentLocation.getLatitude(), currentLocation.getLongitude()), new GeoFire.CompletionListener() {
-                @Override
-                public void onComplete(String key, DatabaseError error) {
-
-                }
-            });
         }
     };
 
@@ -425,6 +425,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
             Intent intent = new Intent(DriverMapActivity.this, ProfileActivity.class);
             intent.putExtra("uId", uId);
+            intent.putExtra("user","d");
             startActivity(intent);
 
         }

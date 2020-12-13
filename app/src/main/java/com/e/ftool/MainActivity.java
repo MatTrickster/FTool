@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -23,7 +25,9 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -66,9 +70,14 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 public class MainActivity extends AppCompatActivity {
 
+    static int selectedServicePos = -1;
     TextView temp, city, wind, humidity, driversAround;
     ImageView icon;
     CardView weatherCard, driversAroundCard;
@@ -91,6 +100,10 @@ public class MainActivity extends AppCompatActivity {
     TextView callDriver, cancelOrder;
 
     RelativeLayout viewDriver;
+    String driverImgUrl = "null";
+    CircleImageView driverImage;
+
+    ArrayList<HashMap<String,String>> list;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,7 +131,10 @@ public class MainActivity extends AppCompatActivity {
         status = findViewById(R.id.status);
         callDriver = findViewById(R.id.call_driver);
         cancelOrder = findViewById(R.id.cancel_order);
+        driverImage = findViewById(R.id.driver_img);
         viewDriver = findViewById(R.id.view_driver);
+
+        attachServices();
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
         v1 = cRef.addValueEventListener(new ValueEventListener() {
@@ -140,13 +156,20 @@ public class MainActivity extends AppCompatActivity {
                     dRef.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                            if(snapshot.child("photo_url").exists())
+                                driverImgUrl = snapshot.child("photo_url").getValue().toString();
+
                             myDriver = new Driver(snapshot.child("name").getValue().toString(),
                                     snapshot.child("number").getValue().toString(), "",
-                                    snapshot.child("rating").getValue().toString());
+                                    snapshot.child("rating").getValue().toString(),driverImgUrl);
 
                             driverName.setText(myDriver.getName());
                             driverNumber.setText(myDriver.getNumber());
                             driverRating.setText(myDriver.getRating());
+
+                            if(!driverImgUrl.equals("null"))
+                                Glide.with(getApplicationContext()).load(driverImgUrl).into(driverImage);
 
                             progressBar3.setVisibility(View.GONE);
                         }
@@ -209,9 +232,7 @@ public class MainActivity extends AppCompatActivity {
                                         time = temp.getKey();
                                     }
 
-                                    dRef.child(snapshot.child("request").child("driver_key").getValue().toString())
-                                            .child("history").child(time).child("rating")
-                                            .setValue(String.valueOf(ratingBar.getRating()));
+                                    dRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
                                     cRef.child("request").removeValue();
                                     cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
                                     cRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
@@ -254,10 +275,18 @@ public class MainActivity extends AppCompatActivity {
 
         book.setOnClickListener(view -> {
 
-            Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
-            intent.putExtra("uId", uId);
-            intent.putExtra("requested", orderStatus!=null);
-            startActivity(intent);
+            if(selectedServicePos == -1){
+
+                Toast.makeText(MainActivity.this,"Select Desired Service",Toast.LENGTH_SHORT).show();
+
+            }else {
+
+                Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
+                intent.putExtra("uId", uId);
+                intent.putExtra("requested", orderStatus != null);
+                intent.putExtra("service",list.get(selectedServicePos).get("title"));
+                startActivity(intent);
+            }
 
         });
 
@@ -292,22 +321,50 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-        viewDriver.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        viewDriver.setOnClickListener(view -> {
 
-                if (orderStatus.equals("accepted")) {
+            if (orderStatus.equals("accepted")) {
 
-                    Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
-                    intent.putExtra("uId", uId);
-                    intent.putExtra("riding", true);
-                    intent.putExtra("driver_key", myDriverKey);
-                    startActivity(intent);
+                Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
+                intent.putExtra("uId", uId);
+                intent.putExtra("riding", true);
+                intent.putExtra("driver_key", myDriverKey);
+                startActivity(intent);
 
-                } else
-                    Toast.makeText(MainActivity.this, "Order Not Accepted Yet", Toast.LENGTH_SHORT).show();
-            }
+            } else
+                Toast.makeText(MainActivity.this, "Order Not Accepted Yet", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    public void attachServices(){
+
+        list = new ArrayList<>();
+        RecyclerView recyclerView = findViewById(R.id.services_recycler);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(MainActivity.this,
+                LinearLayoutManager.HORIZONTAL, false);
+        recyclerView.setLayoutManager(layoutManager);
+        ServicesAdapter services = new ServicesAdapter(MainActivity.this,list,null,"c");
+        recyclerView.setAdapter(services);
+
+        FirebaseDatabase.getInstance().getReference("services_available/")
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                        for(DataSnapshot snap : snapshot.getChildren()){
+
+                            HashMap<String,String> map = new HashMap<>();
+                            map.put("title",snap.getValue().toString());
+                            list.add(map);
+
+                        }
+
+                        services.notifyDataSetChanged();
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) { }
+                });
     }
 
     private final LocationCallback mLocationCallback = new LocationCallback() {
@@ -324,6 +381,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -337,39 +395,36 @@ public class MainActivity extends AppCompatActivity {
 
     public void getDriverAround() {
 
-        DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
-        GeoFire geoFire = new GeoFire(loc);
-        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(currentLocation.getLongitude(), currentLocation.getLatitude())
-                , 10000);
-        geoQuery.removeAllListeners();
-
         final int[] count = {0};
 
-        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+        DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
+        loc.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onKeyEntered(String key, GeoLocation location) {
-                count[0]++;
-            }
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-            @Override
-            public void onKeyExited(String key) {
+                for(DataSnapshot snap : snapshot.getChildren()){
 
-            }
+                    double lat = Double.parseDouble(snap.child("lat").getValue().toString());
+                    double lng = Double.parseDouble(snap.child("lng").getValue().toString());
 
-            @Override
-            public void onKeyMoved(String key, GeoLocation location) {
+                    Location location = new Location("");
+                    location.setLatitude(lat);
+                    location.setLongitude(lng);
 
-            }
+                    Log.i("TAG","x "+snap.getKey());
 
-            @Override
-            public void onGeoQueryReady() {
+                    float dis = currentLocation.distanceTo(location);
+                    if(dis<10000){
+                        count[0]++;
+                    }
+                }
 
                 driversAround.setText("" + count[0]);
 
             }
 
             @Override
-            public void onGeoQueryError(DatabaseError error) {
+            public void onCancelled(@NonNull DatabaseError error) {
 
             }
         });
