@@ -12,4 +12,18 @@
         <item>Rotavator</item>
     </string-array>
 
+    <string-array name="range">
+        <item>5 km</item>
+        <item>10 km</item>
+        <item>15 km</item>
+        <item>20 km</item>
+        <item>25 km</item>
+        <item>30 km</item>
+        <item>35 km</item>
+        <item>40 km</item>
+        <item>45 km</item>
+        <item>50 km</item>
+
+    </string-array>
+
 </resources>

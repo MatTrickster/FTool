@@ -8,6 +8,7 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -27,16 +28,20 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.RatingBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.directions.route.AbstractRouting;
 import com.directions.route.Route;
 import com.directions.route.RouteException;
@@ -79,6 +84,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -89,6 +95,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -103,31 +110,35 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
+import de.hdodenhof.circleimageview.CircleImageView;
+
 public class CustomerMapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     SupportMapFragment mapFragment;
     static GoogleMap map;
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
-    TextView back, driverSelectedName;
     ArrayList<Driver> drivers = new ArrayList<>();
     List<Marker> driversMarkers = new ArrayList<>();
-    Button request;
     String uId;
     Marker cMarker;
-    Circle cCircle;
     DatabaseReference cRef, driversRef, driverLocationRef;
     DataSnapshot driversSnap, customerSnap;
     static Polyline polyline = null;
     String driverSelectedKey;
-    LinearLayout driverSelectedLayout;
-    ImageView removeSelectedDriver;
     Boolean riding;
     ValueEventListener v1, v2;
     private LatLng driverLatLng;
     String[] time_distance = new String[2];
     Boolean alreadyRequested = false;
     String desiredService;
+    LocationCallback mLocationCallback;
+    TextView driversAround;
+    Spinner rangeSpinner;
+    String range = "5";
+    Circle cCircle;
+    AlertDialog.Builder builder;
+    Dialog dialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,34 +146,33 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customer_map);
 
-        request = findViewById(R.id.request);
         mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-        back = findViewById(R.id.back);
         uId = getIntent().getStringExtra("uId");
-        riding = getIntent().getBooleanExtra("riding",false);
+        riding = getIntent().getBooleanExtra("riding", false);
         driverSelectedKey = getIntent().getStringExtra("driver_key");
-        alreadyRequested = getIntent().getBooleanExtra("requested",false);
+        alreadyRequested = getIntent().getBooleanExtra("requested", false);
         desiredService = getIntent().getStringExtra("service");
-        driverSelectedName = findViewById(R.id.driver_selected_name);
-        driverSelectedLayout = findViewById(R.id.driver_selected_layout);
-        removeSelectedDriver = findViewById(R.id.remove_selected_driver);
+        driversAround = findViewById(R.id.drivers_around);
+        rangeSpinner = findViewById(R.id.range_spinner);
 
-        request.setOnClickListener(view -> {
+        rangeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                range = rangeSpinner.getSelectedItem().toString();
+                range = range.substring(0,range.indexOf(" "));
 
-            if(alreadyRequested){
-
-                Toast.makeText(CustomerMapActivity.this,"Already One Ongoing Order",Toast.LENGTH_SHORT).show();
-
-            }else {
-
-                request(desiredService, driverSelectedKey);
+                builder = new AlertDialog.Builder(CustomerMapActivity.this);
+                builder.setMessage("Getting Drivers ...");
+                dialog = builder.create();
+                dialog.show();
+                fetchLocation(range);
             }
-        });
 
-        removeSelectedDriver.setOnClickListener(view -> {
-            driverSelectedLayout.setVisibility(View.GONE);
-            request.setVisibility(View.GONE);
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
         });
 
         driversRef = FirebaseDatabase.getInstance().getReference("drivers/");
@@ -183,20 +193,20 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                 customerSnap = snapshot;
 
-                if(snapshot.child("request").exists())
-                    if(snapshot.child("request").child("status").getValue().toString().equals("completed"))
+                if (snapshot.child("request").exists())
+                    if (snapshot.child("request").child("status").getValue().toString().equals("completed"))
                         finish();
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            public void onCancelled(@NonNull DatabaseError error) { }
         });
 
-        checkGPS();
     }
 
-    public void request(String service, String key) {
+    public void request(String service, String key,String land) {
 
+        Log.i("TAG","x "+service +" "+key);
         if (driversSnap.child(key).child("services").child(service).getChildrenCount() == 0) {
             Toast.makeText(CustomerMapActivity.this, "Service Not Available For Selected Driver",
                     Toast.LENGTH_SHORT).show();
@@ -207,6 +217,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             map.put("c_lat", currentLocation.getLatitude());
             map.put("c_lng", currentLocation.getLongitude());
             map.put("service", service);
+            map.put("expected_land",land);
             map.put("contact", customerSnap.child("number").getValue().toString());
             map.put("name", customerSnap.child("name").getValue().toString());
             map.put("uId", uId);
@@ -226,51 +237,229 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     }
 
-    private final LocationCallback mLocationCallback = new LocationCallback() {
-        @Override
-        public void onLocationResult(LocationResult locationResult) {
-            super.onLocationResult(locationResult);
-            if (locationResult.getLastLocation() == null)
-                return;
-            currentLocation = locationResult.getLastLocation();
+    public void getDriversAround(String range) {
 
-            back.setVisibility(View.INVISIBLE);
+        drivers.clear();
+        DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
 
-            if (riding) {
-                drawRoute();
-            } else {
+        loc.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-                MarkerOptions markerOptions = new MarkerOptions();
-                markerOptions.position(l1);
-                markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_blue_dot));
-                markerOptions.anchor(0.5f, 0.5f);
+                for (DataSnapshot snap : snapshot.getChildren()) {
 
-                if (cMarker.getId() != null)
-                    cMarker.remove();
+                    double lat = Double.parseDouble(snap.child("lat").getValue().toString());
+                    double lng = Double.parseDouble(snap.child("lng").getValue().toString());
 
-                if (cCircle.getId() != null)
-                    cCircle.remove();
+                    Location location = new Location("");
+                    location.setLatitude(lat);
+                    location.setLongitude(lng);
 
-                cMarker = map.addMarker(markerOptions);
-                cMarker.setTag("customer");
+                    float dis = currentLocation.distanceTo(location);
+                    if (dis < Integer.parseInt(range)*1000) {
 
-                CircleOptions co = new CircleOptions();
-                co.center(l1);
-                co.radius(30);
-                co.fillColor(0x154D2EFF);
-                co.strokeColor(0xee4D2EFF);
-                co.strokeWidth(1.0f);
-                cCircle = map.addCircle(co);
-                cCircle.setTag("customer");
+                        boolean desiredServiceMatches = false;
+                        String serviceCharge = "";
 
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
-                getDriversAround();
+                        LatLng driverLocation = new LatLng(lat, lng);
 
+                        for (DataSnapshot snap1 : driversSnap.child(snap.getKey()).child("services").getChildren()) {
+
+                            if (snap1.getKey().toString().equals(desiredService)) {
+                                desiredServiceMatches = true;
+                                serviceCharge = driversSnap.child(snap.getKey()).child("services").child(desiredService)
+                                        .child("charge").getValue().toString();
+                            }
+                        }
+
+                        if (!desiredServiceMatches) {
+                            continue;
+                        }
+
+                        Driver driver = new Driver(driverLocation, serviceCharge,
+                                driversSnap.child(snap.getKey()).child("name").getValue().toString(),
+                                driversSnap.child(snap.getKey()).child("number").getValue().toString(), snap.getKey(),
+                                driversSnap.child(snap.getKey()).child("photo_url").getValue().toString());
+
+                        drivers.add(driver);
+
+                    }
+
+                }
+
+                driversAround.setText(""+drivers.size());
+
+                addDrivers();
             }
 
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) { }
+        });
+    }
+
+    public void addDrivers() {
+
+        for(Marker m:driversMarkers){
+            m.remove();
         }
-    };
+        driversMarkers.clear();
+
+        LatLngBounds.Builder builderB = new LatLngBounds.Builder();
+        builderB.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
+
+        for (int i = 0; i < drivers.size(); i++) {
+
+            builderB.include(drivers.get(i).getLocation());
+            MarkerOptions options = new MarkerOptions();
+            options.position(drivers.get(i).getLocation());
+            options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor));
+            Marker marker = map.addMarker(options);
+            marker.setTag(drivers.get(i).getKey());
+            driversMarkers.add(marker);
+        }
+
+        dialog.dismiss();
+
+        if (drivers.size() != 0)
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builderB.build(), 100));
+        else{
+            builder = new AlertDialog.Builder(CustomerMapActivity.this);
+            builder.setMessage("No Driver Found!\nTry Increasing range.")
+                    .setPositiveButton("OK", (dialogInterface, i) -> { });
+            dialog = builder.create();
+            dialog.show();
+        }
+
+    }
+
+    public void fetchLocation(String range) {
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(CustomerMapActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    10);
+
+            return;
+        }
+
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(2000);
+
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+                if (locationResult.getLastLocation() == null)
+                    return;
+                currentLocation = locationResult.getLastLocation();
+
+                fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+
+                if (riding) {
+                    drawRoute();
+                } else {
+
+                    if(cMarker != null)
+                        cMarker.remove();
+                    if(cCircle != null)
+                        cCircle.remove();
+
+                    LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(l1);
+                    markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_blue_dot));
+                    markerOptions.anchor(0.5f, 0.5f);
+
+                    cMarker = map.addMarker(markerOptions);
+                    cMarker.setTag("Customer");
+
+                    CircleOptions co = new CircleOptions();
+                    co.center(l1);
+                    co.radius(30);
+                    co.fillColor(0x154D2EFF);
+                    co.strokeColor(0xee4D2EFF);
+                    co.strokeWidth(1.0f);
+                    cCircle = map.addCircle(co);
+                    cCircle.setTag("Customer");
+
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
+                    getDriversAround(range);
+
+                }
+            }
+        };
+
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
+
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        map = googleMap;
+        map.setMapStyle(MapStyleOptions.loadRawResourceStyle(CustomerMapActivity.this, R.raw.map_style));
+
+        map.setOnMarkerClickListener(marker -> {
+
+            if(marker.getTag().equals("Customer"))
+                return false;
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this);
+            View v = getLayoutInflater().inflate(R.layout.driver_details,null);
+            TextView dName = v.findViewById(R.id.driver_name);
+            TextView dNumber = v.findViewById(R.id.driver_number);
+            CircleImageView dImg = v.findViewById(R.id.driver_img);
+            TextView service = v.findViewById(R.id.service);
+            TextView sCharge = v.findViewById(R.id.service_charge);
+            TextInputEditText land = v.findViewById(R.id.land);
+            Button request = v.findViewById(R.id.request);
+
+            for(int i=0;i<drivers.size();i++){
+
+                if(drivers.get(i).getKey().equals(marker.getTag())){
+
+                    driverSelectedKey = drivers.get(i).getKey();
+                    dName.setText(drivers.get(i).getName());
+                    dNumber.setText(drivers.get(i).getNumber());
+                    service.setText(desiredService);
+                    sCharge.setText(drivers.get(i).getServiceCharge());
+                    Glide.with(CustomerMapActivity.this).load(drivers.get(i).getImgUrl())
+                            .placeholder(R.drawable.ic_person)
+                            .into(dImg);
+
+                    break;
+                }
+            }
+
+            builder.setView(v);
+            builder.create().show();
+
+            request.setOnClickListener(view -> {
+
+                if (alreadyRequested) {
+                    Toast.makeText(CustomerMapActivity.this, "Already One Ongoing Order",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    if(land.getText().length()==0)
+                        land.setError("Fill Detail");
+                    else if(land.getText().toString().equals("0"))
+                        land.setError("Field Can't be zero");
+                    else if(Integer.parseInt(land.getText().toString())>10)
+                        land.setError("Land Can't be more than 10");
+                    else
+                        request(desiredService, driverSelectedKey,land.getText().toString());
+                }
+
+            });
+
+            return false;
+        });
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -284,111 +473,15 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         }
     }
 
-    public void getDriversAround() {
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
 
-        DatabaseReference loc = FirebaseDatabase.getInstance().getReference("drivers_available_loc");
+        if (v1 != null)
+            cRef.removeEventListener(v1);
 
-        loc.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-
-                for(DataSnapshot snap : snapshot.getChildren()){
-
-                    double lat = Double.parseDouble(snap.child("lat").getValue().toString());
-                    double lng = Double.parseDouble(snap.child("lng").getValue().toString());
-
-                    Location location = new Location("");
-                    location.setLatitude(lat);
-                    location.setLongitude(lng);
-
-                    float dis = currentLocation.distanceTo(location);
-                    if(dis<10000){
-
-                        boolean desiredServiceMatches = false;
-
-                        LatLng driverLocation = new LatLng(lat, lng);
-                        ArrayList<HashMap<String, String>> service = new ArrayList<>();
-
-                        for (DataSnapshot snap1 : driversSnap.child(snap.getKey()).child("services").getChildren()) {
-                            HashMap<String, String> m = new HashMap<>();
-                            m.put("title", snap1.getKey());
-                            m.put("charge", snap1.child("charge").getValue().toString());
-                            service.add(m);
-
-                            if(snap1.getKey().toString().equals(desiredService))
-                                desiredServiceMatches = true;
-                        }
-
-                        if(!desiredServiceMatches){
-                            continue;
-                        }
-
-                        Driver driver = new Driver(driverLocation, service,
-                                driversSnap.child(snap.getKey()).child("name").getValue().toString(),
-                                driversSnap.child(snap.getKey()).child("number").getValue().toString(), snap.getKey());
-
-                        drivers.add(driver);
-
-                    }
-
-                }
-
-                if(drivers.size() == 0){
-                    Toast.makeText(CustomerMapActivity.this,"Desired Service Not Available",
-                            Toast.LENGTH_SHORT).show();
-                    finish();
-                }
-                else
-                    addDrivers();
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-    }
-
-    public void addDrivers() {
-
-        for (Marker temp : driversMarkers) {
-            temp.remove();
-        }
-        driversMarkers.clear();
-
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
-
-        for (int i = 0; i < drivers.size(); i++) {
-
-            builder.include(drivers.get(i).getLocation());
-            MarkerOptions options = new MarkerOptions();
-            options.position(drivers.get(i).getLocation());
-            options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor));
-            Marker marker = map.addMarker(options);
-            marker.setTag(drivers.get(i).getKey());
-            driversMarkers.add(marker);
-
-        }
-
-        CustomMarkerInfoWindowView markerWindowView = new CustomMarkerInfoWindowView(CustomerMapActivity.this, drivers);
-        map.setInfoWindowAdapter(markerWindowView);
-
-        map.setOnInfoWindowClickListener(marker -> {
-            for (int i = 0; i < driversMarkers.size(); i++) {
-                if (driversMarkers.get(i).getTag().equals(marker.getTag())) {
-                    driverSelectedKey = drivers.get(i).getKey();
-                    request.setVisibility(View.VISIBLE);
-                    driverSelectedName.setText("Driver Selected : " + drivers.get(i).getName());
-                    driverSelectedLayout.setVisibility(View.VISIBLE);
-                    break;
-                }
-            }
-        });
-
-        if (drivers.size() != 0)
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
-
+        if (v2 != null)
+            driverLocationRef.removeEventListener(v2);
     }
 
     public void drawRoute() {
@@ -396,14 +489,14 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         map.clear();
 
         driverLocationRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc/" +
-                driverSelectedKey + "/").child("l");
+                driverSelectedKey + "/");
 
         v2 = driverLocationRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                double locationLat = Double.parseDouble(snapshot.child("0").getValue().toString());
-                double locationLng = Double.parseDouble(snapshot.child("1").getValue().toString());
+                double locationLat = Double.parseDouble(snapshot.child("lat").getValue().toString());
+                double locationLng = Double.parseDouble(snapshot.child("lng").getValue().toString());
 
                 driverLatLng = new LatLng(locationLat, locationLng);
 
@@ -418,7 +511,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 LatLngBounds.Builder builder = new LatLngBounds.Builder();
                 builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
                 builder.include(driverLatLng);
-                map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
+                map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 140));
 
                 map.addMarker(new MarkerOptions().position(driverLatLng).title("Driver")
                         .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_tractor)));
@@ -444,78 +537,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
         });
 
-    }
-
-    public void checkGPS() {
-        final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
-        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Your GPS seems to be disabled, Enable it?")
-                    .setCancelable(false)
-                    .setPositiveButton("Yes", (dialog, id) ->
-                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
-                    .setNegativeButton("No", (dialog, id) -> finish());
-            final AlertDialog alert = builder.create();
-            alert.show();
-
-        }
-    }
-
-    private boolean isGooglePlayServicesAvailable() {
-        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-        int status = googleApiAvailability.isGooglePlayServicesAvailable(this);
-        if (ConnectionResult.SUCCESS == status)
-            return true;
-        else {
-            if (googleApiAvailability.isUserResolvableError(status))
-                Toast.makeText(this, "Please Install google play services to use this application", Toast.LENGTH_LONG).show();
-        }
-        return false;
-    }
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        map = googleMap;
-
-        cMarker = map.addMarker(new MarkerOptions().position(new LatLng(0, 0)));
-        cMarker.setTag("customer");
-
-        cCircle = map.addCircle(new CircleOptions().center(new LatLng(0, 0)));
-        cCircle.setTag("customer");
-
-        map.setMapStyle(MapStyleOptions.loadRawResourceStyle(CustomerMapActivity.this, R.raw.map_style));
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (isGooglePlayServicesAvailable()) {
-            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
-            LocationRequest locationRequest = LocationRequest.create();
-            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-            locationRequest.setInterval(7000);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(CustomerMapActivity.this,
-                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                            10);
-                    return;
-                }
-            }
-            fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
-
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (fusedLocationProviderClient != null)
-            fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
 
     private static String requestDirection(String requestedUrl) {
@@ -645,16 +666,5 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 polyline = map.addPolyline(polylineOptions);
             }
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        if (v1 != null)
-            cRef.removeEventListener(v1);
-
-        if (v2 != null)
-            driverLocationRef.removeEventListener(v2);
     }
 }

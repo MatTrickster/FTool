@@ -35,15 +35,15 @@ public class SplashActivity extends AppCompatActivity {
             Intent mainIntent = new Intent(SplashActivity.this,LoginActivity.class);
             startActivity(mainIntent);
             finish();
-        }, 5000);
+        }, 1000);
 
         Animation anim1 = AnimationUtils.loadAnimation(this,android.R.anim.slide_in_left);
-        anim1.setDuration(4000);
+        anim1.setDuration(1000);
         name.startAnimation(anim1);
         lines.startAnimation(anim1);
 
         Animation anim2 = AnimationUtils.loadAnimation(this,android.R.anim.slide_out_right);
-        anim2.setDuration(4000);
+        anim2.setDuration(1000);
         tag.startAnimation(anim2);
 
         Glide.with(this).load(R.drawable.tractor_gif).into(gif);

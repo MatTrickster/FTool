@@ -1,6 +1,7 @@
 package com.e.ftool;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
@@ -11,7 +12,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -49,11 +52,24 @@ import com.firebase.geofire.GeoQuery;
 import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResolvableApiException;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.LocationSettingsResult;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.database.DataSnapshot;
@@ -90,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
     DatabaseReference cRef, dRef;
     ValueEventListener v1;
 
-    LinearLayout currentDriver;
+    MaterialCardView currentDriver;
     TextView noOrder;
 
     String orderStatus, myDriverKey;
@@ -103,7 +119,12 @@ public class MainActivity extends AppCompatActivity {
     String driverImgUrl = "null";
     CircleImageView driverImage;
 
-    ArrayList<HashMap<String,String>> list;
+    ArrayList<HashMap<String, String>> list;
+
+    LocationRequest locationRequest;
+    LocationCallback mLocationCallback;
+
+    ImageView info;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -133,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
         cancelOrder = findViewById(R.id.cancel_order);
         driverImage = findViewById(R.id.driver_img);
         viewDriver = findViewById(R.id.view_driver);
+        info = findViewById(R.id.info);
 
         attachServices();
 
@@ -157,18 +179,18 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                            if(snapshot.child("photo_url").exists())
+                            if (snapshot.child("photo_url").exists())
                                 driverImgUrl = snapshot.child("photo_url").getValue().toString();
 
                             myDriver = new Driver(snapshot.child("name").getValue().toString(),
                                     snapshot.child("number").getValue().toString(), "",
-                                    snapshot.child("rating").getValue().toString(),driverImgUrl);
+                                    snapshot.child("rating").getValue().toString(), driverImgUrl);
 
                             driverName.setText(myDriver.getName());
                             driverNumber.setText(myDriver.getNumber());
                             driverRating.setText(myDriver.getRating());
 
-                            if(!driverImgUrl.equals("null"))
+                            if (!driverImgUrl.equals("null"))
                                 Glide.with(getApplicationContext()).load(driverImgUrl).into(driverImage);
 
                             progressBar3.setVisibility(View.GONE);
@@ -273,18 +295,28 @@ public class MainActivity extends AppCompatActivity {
 
         checkGPS();
 
+        info.setOnClickListener(view -> {
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            builder.setMessage("It is the total number of drivers available providing all types of services" +
+                    " in the range of 50 KM.")
+                    .setPositiveButton("OK", (dialogInterface, i) -> { });
+            builder.create().show();
+
+        });
+
         book.setOnClickListener(view -> {
 
-            if(selectedServicePos == -1){
+            if (selectedServicePos == -1) {
 
-                Toast.makeText(MainActivity.this,"Select Desired Service",Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Select Desired Service", Toast.LENGTH_SHORT).show();
 
-            }else {
+            } else {
 
                 Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
                 intent.putExtra("uId", uId);
                 intent.putExtra("requested", orderStatus != null);
-                intent.putExtra("service",list.get(selectedServicePos).get("title"));
+                intent.putExtra("service", list.get(selectedServicePos).get("title"));
                 startActivity(intent);
             }
 
@@ -336,14 +368,58 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void attachServices(){
+    public void checkGPS() {
+
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(2000);
+
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(locationRequest);
+        builder.setAlwaysShow(true);
+
+        Task<LocationSettingsResponse> result = LocationServices.getSettingsClient(this)
+                .checkLocationSettings(builder.build());
+        result.addOnCompleteListener(new OnCompleteListener<LocationSettingsResponse>() {
+            @Override
+            public void onComplete(@NonNull Task<LocationSettingsResponse> task) {
+                try {
+                    LocationSettingsResponse response =
+                            task.getResult(ApiException.class);
+
+                    if(response.getLocationSettingsStates().isGpsPresent()){
+
+                        fetchLocation();
+                    }
+                } catch (ApiException ex) {
+                    switch (ex.getStatusCode()) {
+                        case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                            try {
+                                ResolvableApiException resolvableApiException =
+                                        (ResolvableApiException) ex;
+                                resolvableApiException
+                                        .startResolutionForResult(MainActivity.this,
+                                                100);
+                            } catch (IntentSender.SendIntentException e) {
+
+                            }
+                            break;
+                        case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+
+                            break;
+                    }
+                }
+            }
+        });
+    }
+
+    public void attachServices() {
 
         list = new ArrayList<>();
         RecyclerView recyclerView = findViewById(R.id.services_recycler);
         LinearLayoutManager layoutManager = new LinearLayoutManager(MainActivity.this,
                 LinearLayoutManager.HORIZONTAL, false);
         recyclerView.setLayoutManager(layoutManager);
-        ServicesAdapter services = new ServicesAdapter(MainActivity.this,list,null,"c");
+        ServicesAdapter services = new ServicesAdapter(MainActivity.this, list, null, "c");
         recyclerView.setAdapter(services);
 
         FirebaseDatabase.getInstance().getReference("services_available/")
@@ -351,10 +427,10 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                        for(DataSnapshot snap : snapshot.getChildren()){
+                        for (DataSnapshot snap : snapshot.getChildren()) {
 
-                            HashMap<String,String> map = new HashMap<>();
-                            map.put("title",snap.getValue().toString());
+                            HashMap<String, String> map = new HashMap<>();
+                            map.put("title", snap.getValue().toString());
                             list.add(map);
 
                         }
@@ -363,34 +439,9 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onCancelled(@NonNull DatabaseError error) { }
+                    public void onCancelled(@NonNull DatabaseError error) {
+                    }
                 });
-    }
-
-    private final LocationCallback mLocationCallback = new LocationCallback() {
-        @Override
-        public void onLocationResult(LocationResult locationResult) {
-            super.onLocationResult(locationResult);
-            if (locationResult.getLastLocation() == null)
-                return;
-            currentLocation = locationResult.getLastLocation();
-
-            updateWeather(currentLocation.getLatitude(), currentLocation.getLongitude());
-
-            getDriverAround();
-        }
-    };
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Intent callIntent = new Intent(Intent.ACTION_CALL);
-            callIntent.setData(Uri.parse("tel:" + myDriver.getNumber()));
-            startActivity(callIntent);
-        }
     }
 
     public void getDriverAround() {
@@ -402,7 +453,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                for(DataSnapshot snap : snapshot.getChildren()){
+                for (DataSnapshot snap : snapshot.getChildren()) {
 
                     double lat = Double.parseDouble(snap.child("lat").getValue().toString());
                     double lng = Double.parseDouble(snap.child("lng").getValue().toString());
@@ -411,10 +462,8 @@ public class MainActivity extends AppCompatActivity {
                     location.setLatitude(lat);
                     location.setLongitude(lng);
 
-                    Log.i("TAG","x "+snap.getKey());
-
                     float dis = currentLocation.distanceTo(location);
-                    if(dis<10000){
+                    if (dis < 5000) {
                         count[0]++;
                     }
                 }
@@ -475,71 +524,72 @@ public class MainActivity extends AppCompatActivity {
         queue.add(request);
     }
 
-    public void checkGPS() {
-        final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+    public void fetchLocation(){
 
-        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Your GPS seems to be disabled, Enable it?")
-                    .setCancelable(false)
-                    .setPositiveButton("Yes", (dialog, id) ->
-                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
-                    .setNegativeButton("No", (dialog, id) -> finish());
-            final AlertDialog alert = builder.create();
-            alert.show();
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    10);
 
+            return;
         }
-    }
 
-    private boolean isGooglePlayServicesAvailable() {
-        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-        int status = googleApiAvailability.isGooglePlayServicesAvailable(this);
-        if (ConnectionResult.SUCCESS == status)
-            return true;
-        else {
-            if (googleApiAvailability.isUserResolvableError(status))
-                Toast.makeText(this, "Please Install google play services to use this application", Toast.LENGTH_LONG).show();
-        }
-        return false;
-    }
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (isGooglePlayServicesAvailable()) {
-            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
-            LocationRequest locationRequest = LocationRequest.create();
-            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-            locationRequest.setInterval(60000);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(MainActivity.this,
-                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                            10);
+                if (locationResult.getLastLocation() == null)
                     return;
-                }
-            }
-            fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
+                currentLocation = locationResult.getLastLocation();
 
+                fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+
+                updateWeather(currentLocation.getLatitude(), currentLocation.getLongitude());
+
+                getDriverAround();
+            }
+        };
+
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback , Looper.myLooper());
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 100 && resultCode == RESULT_OK) {
+            Toast.makeText(MainActivity.this, "Location Enabled", Toast.LENGTH_SHORT).show();
+
+            fetchLocation();
+        }
+        else if(requestCode == 100 && resultCode == RESULT_CANCELED){
+            finish();
         }
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (fusedLocationProviderClient != null)
-            fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Intent callIntent = new Intent(Intent.ACTION_CALL);
+            callIntent.setData(Uri.parse("tel:" + myDriver.getNumber()));
+            startActivity(callIntent);
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        cRef.removeEventListener(v1);
+        if(v1 != null)
+            cRef.removeEventListener(v1);
     }
 
     public void Profile(View v){

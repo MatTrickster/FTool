@@ -256,6 +256,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
         });
 
+        /*
         TextView customerName = findViewById(R.id.user_sheet_name);
         TextView customerNumber = findViewById(R.id.user_sheet_number);
         TextView customerDistance = findViewById(R.id.user_sheet_distance);
@@ -283,6 +284,8 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 startActivity(callIntent);
             }
         });
+
+         */
     }
 
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {

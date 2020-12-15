@@ -11,8 +11,7 @@ import java.util.HashMap;
 public class Driver {
 
     LatLng location;
-    ArrayList<HashMap<String,String>> services;
-    String name,number,key,service,rating,imgUrl;
+    String name,number,key,service,rating,imgUrl,serviceCharge;
 
     Driver(String name,String number,String service,String rating,String imgUrl){
         this.name = name;
@@ -22,12 +21,13 @@ public class Driver {
         this.imgUrl = imgUrl;
     }
 
-    Driver(LatLng location,ArrayList<HashMap<String,String>> services, String name,String number,String key){
+    Driver(LatLng location,String serviceCharge, String name,String number,String key,String imgUrl){
         this.location = location;
         this.name = name;
         this.number = number;
-        this.services = services;
+        this.serviceCharge = serviceCharge;
         this.key = key;
+        this.imgUrl = imgUrl;
     }
 
     public void setImgUrl(String imgUrl) {
@@ -74,8 +74,12 @@ public class Driver {
         return name;
     }
 
-    public ArrayList<HashMap<String,String>> getServices() {
-        return services;
+    public String getServiceCharge() {
+        return serviceCharge;
+    }
+
+    public void setServiceCharge(String serviceCharge) {
+        this.serviceCharge = serviceCharge;
     }
 
     public String getNumber() {
@@ -90,7 +94,4 @@ public class Driver {
         this.location = location;
     }
 
-    public void setServices(ArrayList<HashMap<String,String>> services) {
-        this.services = services;
-    }
 }
