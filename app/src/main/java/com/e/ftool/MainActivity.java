@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
     DatabaseReference cRef, dRef;
     ValueEventListener v1;
 
-    MaterialCardView currentDriver;
+    LinearLayout currentOrder;
     TextView noOrder;
 
     String orderStatus, myDriverKey;
@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
         progressBar3 = findViewById(R.id.progress3);
         driversAround = findViewById(R.id.drivers_around);
         uId = getIntent().getStringExtra("uId");
-        currentDriver = findViewById(R.id.current_driver);
+        currentOrder = findViewById(R.id.current_order);
         noOrder = findViewById(R.id.no_order);
         driverName = findViewById(R.id.driver_name);
         driverNumber = findViewById(R.id.driver_number);
@@ -168,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
                 if (snapshot.child("request").exists()) {
 
                     noOrder.setVisibility(View.GONE);
-                    currentDriver.setVisibility(View.VISIBLE);
+                    currentOrder.setVisibility(View.VISIBLE);
 
                     myDriverKey = snapshot.child("request").child("driver_key").getValue().toString();
                     orderStatus = snapshot.child("request").child("status").getValue().toString();
@@ -219,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
                                     cRef.child("request").removeValue();
 
                                     noOrder.setVisibility(View.VISIBLE);
-                                    currentDriver.setVisibility(View.GONE);
+                                    currentOrder.setVisibility(View.GONE);
                                 });
                         AlertDialog dialog = builder.create();
                         dialog.show();
@@ -261,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
                                     cRef.child("current_ride").removeValue();
 
                                     noOrder.setVisibility(View.VISIBLE);
-                                    currentDriver.setVisibility(View.GONE);
+                                    currentOrder.setVisibility(View.GONE);
                                 })
                                 .setNegativeButton("No", (dialogInterface, i) -> {
 
@@ -275,7 +275,7 @@ public class MainActivity extends AppCompatActivity {
                                     cRef.child("current_ride").removeValue();
 
                                     noOrder.setVisibility(View.VISIBLE);
-                                    currentDriver.setVisibility(View.GONE);
+                                    currentOrder.setVisibility(View.GONE);
                                 });
                         AlertDialog dialog = builder.create();
                         dialog.show();
@@ -345,7 +345,7 @@ public class MainActivity extends AppCompatActivity {
                 cRef.child("request").removeValue();
 
                 noOrder.setVisibility(View.VISIBLE);
-                currentDriver.setVisibility(View.GONE);
+                currentOrder.setVisibility(View.GONE);
             } else {
                 Toast.makeText(MainActivity.this, "Order is Accepted, Cannot be cancelled Now!",
                         Toast.LENGTH_SHORT).show();
