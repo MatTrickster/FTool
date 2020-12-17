@@ -24,6 +24,8 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
+import android.provider.Telephony;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MenuItem;
@@ -84,6 +86,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -139,6 +142,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     Circle cCircle;
     AlertDialog.Builder builder;
     Dialog dialog;
+    MaterialCardView filter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -155,6 +159,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         desiredService = getIntent().getStringExtra("service");
         driversAround = findViewById(R.id.drivers_around);
         rangeSpinner = findViewById(R.id.range_spinner);
+        filter = findViewById(R.id.filter);
 
         rangeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -163,10 +168,18 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 range = range.substring(0,range.indexOf(" "));
 
                 builder = new AlertDialog.Builder(CustomerMapActivity.this);
-                builder.setMessage("Getting Drivers ...");
+
+                if(riding) {
+                    filter.setVisibility(View.GONE);
+                    builder.setMessage("Getting Driver Location ...");
+                }else{
+                    builder.setMessage("Getting Drivers ...");
+                }
+
                 dialog = builder.create();
                 dialog.show();
                 fetchLocation(range);
+
             }
 
             @Override
@@ -206,7 +219,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     public void request(String service, String key,String land) {
 
-        Log.i("TAG","x "+service +" "+key);
         if (driversSnap.child(key).child("services").child(service).getChildrenCount() == 0) {
             Toast.makeText(CustomerMapActivity.this, "Service Not Available For Selected Driver",
                     Toast.LENGTH_SHORT).show();
@@ -217,7 +229,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             map.put("c_lat", currentLocation.getLatitude());
             map.put("c_lng", currentLocation.getLongitude());
             map.put("service", service);
-            map.put("expected_land",land);
+            map.put("land",land);
             map.put("contact", customerSnap.child("number").getValue().toString());
             map.put("name", customerSnap.child("name").getValue().toString());
             map.put("uId", uId);
@@ -231,7 +243,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             cRef.child("request").setValue(map1);
 
             Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
-
             finish();
         }
 
@@ -487,6 +498,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     public void drawRoute() {
 
         map.clear();
+        if(dialog != null)
+        dialog.dismiss();
 
         driverLocationRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc/" +
                 driverSelectedKey + "/");

@@ -9,7 +9,7 @@
     android:layout_height="wrap_content"
     android:layout_margin="10dp"
     app:strokeColor="#000"
-    app:strokeWidth="0.5dp">
+    app:strokeWidth="0.1dp">
 
     <LinearLayout
         android:id="@+id/layout"

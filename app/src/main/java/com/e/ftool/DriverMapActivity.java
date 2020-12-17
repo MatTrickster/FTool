@@ -1,6 +1,7 @@
 package com.e.ftool;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -10,6 +11,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -29,12 +31,16 @@ import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.*;
 import com.google.android.gms.maps.*;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.*;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.database.*;
@@ -55,7 +61,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
     TextView back;
-    Polyline polyline = null;
+    Polyline polyline = null,polyline1 = null, polyline2 = null;
     String uId, cId;
     DatabaseReference cRef, ref, driversAroundLoc;
     ValueEventListener v1;
@@ -68,6 +74,8 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     Driver driver;
     LinearLayout bottomSheet;
     Circle dCircle;
+    LocationRequest locationRequest;
+    LocationCallback mLocationCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,13 +125,19 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                     if (snapshot.child("customer_request").child("status").getValue().toString().equals("requested")) {
 
+                        Location cLoc = new Location("");
+                        cLoc.setLatitude(Double.parseDouble(snapshot.child("customer_request").child("c_lat").getValue().toString()));
+                        cLoc.setLongitude(Double.parseDouble(snapshot.child("customer_request").child("c_lng").getValue().toString()));
+                        float dis = 14.1235f;
+
                         AlertDialog.Builder builder = new AlertDialog.Builder(DriverMapActivity.this)
                                 .setTitle("New Customer!")
                                 .setCancelable(false)
-                                .setMessage("Name \t\t:\t\t" + snapshot.child("customer_request").child("name")
-                                        .getValue().toString() + "\nService \t\t:\t\t" + snapshot.child("customer_request")
-                                        .child("service").getValue().toString() + "\nContact \t:\t\t" + snapshot
-                                        .child("customer_request").child("contact").getValue().toString())
+                                .setMessage("Name \t\t:\t\t" + snapshot.child("customer_request").child("name").getValue().toString()
+                                        + "\nService \t\t:\t\t" + snapshot.child("customer_request").child("service").getValue().toString()
+                                        + " ( For " + snapshot.child("customer_request").child("land").getValue().toString()
+                                        + " Acres )" + "\nContact \t:\t\t" + snapshot.child("customer_request").child("contact").getValue().toString()
+                                        + "\nDistance \t:\t\t" + String.format("%.2f",dis) + " Km")
                                 .setPositiveButton("Accept", (dialogInterface, i) -> {
 
                                     cRef.child(cId).child("request").child("status").setValue("accepted");
@@ -193,60 +207,11 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         occupied = false;
     }
 
-    private final LocationCallback mLocationCallback = new LocationCallback() {
-        @Override
-        public void onLocationResult(LocationResult locationResult) {
-            super.onLocationResult(locationResult);
-            if (locationResult.getLastLocation() == null)
-                return;
-            currentLocation = locationResult.getLastLocation();
-
-            HashMap<String,Double> m = new HashMap<>();
-            m.put("lat",currentLocation.getLatitude());
-            m.put("lng",currentLocation.getLongitude());
-            driversAroundLoc.child(uId).setValue(m);
-
-            back.setVisibility(View.INVISIBLE);
-
-            if (occupied) {
-                dialog.dismiss();
-                drawRoute();
-                showCustomerDetails();
-
-                if (time_distance[0] != null)
-                    if (!time_distance[0].contains("km"))
-                        arrivedToCustomer = true;
-
-            } else {
-
-                LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
-                MarkerOptions markerOptions = new MarkerOptions();
-                markerOptions.position(l1);
-                markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_blue_dot));
-                markerOptions.anchor(0.5f,0.5f);
-                map.clear();
-                map.addMarker(markerOptions);
-
-                CircleOptions co = new CircleOptions();
-                co.center(l1);
-                co.radius(30);
-                co.fillColor(0x154D2EFF);
-                co.strokeColor(0xee4D2EFF);
-                co.strokeWidth(1.0f);
-                dCircle = map.addCircle(co);
-
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
-            }
-
-        }
-    };
-
     public void showCustomerDetails() {
 
         bottomSheet = findViewById(R.id.bottom_sheet);
         bottomSheet.setVisibility(View.VISIBLE);
         BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-
         bottomSheetBehavior.setHideable(false);
 
         ImageView imageView = findViewById(R.id.click);
@@ -256,7 +221,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
         });
 
-        /*
+
         TextView customerName = findViewById(R.id.user_sheet_name);
         TextView customerNumber = findViewById(R.id.user_sheet_number);
         TextView customerDistance = findViewById(R.id.user_sheet_distance);
@@ -285,7 +250,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
             }
         });
 
-         */
+
     }
 
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -298,28 +263,122 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         }
     }
 
-
     public void checkGPS() {
-        final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(5000);
 
-        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(locationRequest);
+        builder.setAlwaysShow(true);
 
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Your GPS seems to be disabled, do you want to enable it?")
-                    .setCancelable(false)
-                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        public void onClick(final DialogInterface dialog, final int id) {
-                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-                        }
-                    })
-                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                        public void onClick(final DialogInterface dialog, final int id) {
-                            dialog.cancel();
-                        }
-                    });
-            final AlertDialog alert = builder.create();
-            alert.show();
+        Task<LocationSettingsResponse> result = LocationServices.getSettingsClient(this)
+                .checkLocationSettings(builder.build());
+        result.addOnCompleteListener(new OnCompleteListener<LocationSettingsResponse>() {
+            @Override
+            public void onComplete(@NonNull Task<LocationSettingsResponse> task) {
+                try {
+                    LocationSettingsResponse response =
+                            task.getResult(ApiException.class);
 
+                    if(response.getLocationSettingsStates().isGpsPresent()){
+
+                        fetchLocation();
+                    }
+                } catch (ApiException ex) {
+                    switch (ex.getStatusCode()) {
+                        case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                            try {
+                                ResolvableApiException resolvableApiException =
+                                        (ResolvableApiException) ex;
+                                resolvableApiException
+                                        .startResolutionForResult(DriverMapActivity.this, 100);
+                            } catch (IntentSender.SendIntentException e) {
+
+                            }
+                            break;
+                        case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+
+                            break;
+                    }
+                }
+            }
+        });
+    }
+
+    public void fetchLocation(){
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(DriverMapActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 10);
+
+            return;
+        }
+
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+
+                if (locationResult.getLastLocation() == null)
+                    return;
+                currentLocation = locationResult.getLastLocation();
+
+                HashMap<String, Double> m = new HashMap<>();
+                m.put("lat", currentLocation.getLatitude());
+                m.put("lng", currentLocation.getLongitude());
+                driversAroundLoc.child(uId).setValue(m);
+
+                back.setVisibility(View.INVISIBLE);
+
+                if (occupied) {
+                    dialog.dismiss();
+                    drawRoute();
+                    showCustomerDetails();
+
+                    if (time_distance[0] != null)
+                        if (!time_distance[0].contains("km"))
+                            arrivedToCustomer = true;
+
+                } else {
+
+                    LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(l1);
+                    markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_blue_dot));
+                    markerOptions.anchor(0.5f, 0.5f);
+                    map.clear();
+                    map.addMarker(markerOptions);
+
+                    CircleOptions co = new CircleOptions();
+                    co.center(l1);
+                    co.radius(30);
+                    co.fillColor(0x154D2EFF);
+                    co.strokeColor(0xee4D2EFF);
+                    co.strokeWidth(1.0f);
+                    dCircle = map.addCircle(co);
+
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(l1, 19));
+
+                }
+            }
+        };
+
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback , Looper.myLooper());
+
+    };
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 100 && resultCode == RESULT_OK) {
+            Toast.makeText(DriverMapActivity.this, "Location Enabled", Toast.LENGTH_SHORT).show();
+
+            fetchLocation();
         }
     }
 
@@ -330,44 +389,10 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (isGooglePlayServicesAvailable()) {
-            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
-            LocationRequest locationRequest = LocationRequest.create();
-            locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-            locationRequest.setInterval(7000);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(DriverMapActivity.this,
-                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                            10);
-                    return;
-                }
-            }
-            fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
-
-        }
-    }
-
-    @Override
     protected void onDestroy() {
         super.onDestroy();
+        if(v1 != null)
         ref.removeEventListener(v1);
-    }
-
-    private boolean isGooglePlayServicesAvailable() {
-        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-        int status = googleApiAvailability.isGooglePlayServicesAvailable(this);
-        if (ConnectionResult.SUCCESS == status)
-            return true;
-        else {
-            if (googleApiAvailability.isUserResolvableError(status))
-                Toast.makeText(this, "Please Install google play services to use this application", Toast.LENGTH_LONG).show();
-        }
-        return false;
     }
 
     public void drawRoute() {
@@ -384,11 +409,6 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         Location loc2 = new Location("");
         loc2.setLatitude(dLatLng.latitude);
         loc2.setLongitude(dLatLng.longitude);
-
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
-        builder.include(cLatLng);
-        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 100));
 
         map.addMarker(new MarkerOptions().position(cLatLng).title("Customer")
                 .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_pickup))).setAnchor(0.5f, 0.5f);
@@ -473,18 +493,11 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     }
 
     private String buildRequestUrl(LatLng origin, LatLng destination) {
-        String strOrigin = "origin=" + origin.latitude + "," + origin.longitude;
-        String strDestination = "destination=" + destination.latitude + "," + destination.longitude;
-        String sensor = "sensor=false";
-        String mode = "mode=driving";
 
-        String param = strOrigin + "&" + strDestination + "&" + sensor + "&" + mode;
-        String output = "json";
-        String APIKEY = getResources().getString(R.string.google_maps_key);
-
-        String url = "https://maps.googleapis.com/maps/api/directions/" + output + "?" + param + "&key=" + APIKEY;
-        Log.d("TAG", url);
-        return url;
+        return "https://maps.googleapis.com/maps/api/directions/json?origin=" + origin.latitude + ","
+                + origin.longitude + "&destination=" + destination.latitude + ","
+                + destination.longitude + "&sensor=false&mode=driving&key="
+                + getResources().getString(R.string.google_maps_key);
     }
 
     public class TaskDirectionRequest extends AsyncTask<String, Void, String> {
@@ -531,11 +544,13 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         protected void onPostExecute(List<List<HashMap<String, String>>> lists) {
             super.onPostExecute(lists);
             ArrayList points = null;
-            PolylineOptions polylineOptions = null;
+            PolylineOptions polylineOptions = null, polylineOptions1 = null, polylineOptions2 = null;
 
             for (List<HashMap<String, String>> path : lists) {
                 points = new ArrayList();
                 polylineOptions = new PolylineOptions();
+                polylineOptions1 = new PolylineOptions();
+                polylineOptions2 = new PolylineOptions();
                 int x = 0;
                 for (HashMap<String, String> point : path) {
 
@@ -545,6 +560,37 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                         continue;
                     } else if (x == 2) {
                         time_distance[1] = point.get("duration");
+
+                        double sLat = Double.parseDouble(point.get("s_lat"));
+                        double sLng = Double.parseDouble(point.get("s_lng"));
+                        double eLat = Double.parseDouble(point.get("e_lat"));
+                        double eLng = Double.parseDouble(point.get("e_lng"));
+
+                        LatLng l1 = new LatLng(sLat,sLng);
+                        LatLng l2 = new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
+
+                        LatLng l3 = new LatLng(eLat,eLng);
+                        LatLng l4 = customer.getLatLng();
+
+                        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                        builder.include(l1);
+                        builder.include(l2);
+                        builder.include(l3);
+                        builder.include(l4);
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 140));
+
+                        polylineOptions2.add(l3);
+                        polylineOptions2.add(l4);
+                        polylineOptions2.width(14f);
+                        polylineOptions2.color(Color.parseColor("#72bcd4"));
+                        polylineOptions2.geodesic(true);
+
+                        polylineOptions1.add(l1);
+                        polylineOptions1.add(l2);
+                        polylineOptions1.width(14f);
+                        polylineOptions1.color(Color.parseColor("#72bcd4"));
+                        polylineOptions1.geodesic(true);
+
                         continue;
                     }
 
@@ -559,10 +605,26 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
                 polylineOptions.color(Color.parseColor("#72bcd4"));
                 polylineOptions.geodesic(true);
             }
+
             if (polyline != null)
                 polyline.remove();
+            if(polyline1 != null)
+                polyline1.remove();
+            if(polyline2 != null)
+                polyline2.remove();
             if (polylineOptions != null) {
                 polyline = map.addPolyline(polylineOptions);
+            }
+
+            List<PatternItem> pattern = Arrays.asList(new Dot(), new Gap(20), new Dash(30), new Gap(20));
+
+            if(polylineOptions1 != null){
+                polyline1 = map.addPolyline(polylineOptions1);
+                polyline1.setPattern(pattern);
+            }
+            if(polylineOptions2 != null){
+                polyline2 = map.addPolyline(polylineOptions2);
+                polyline2.setPattern(pattern);
             }
 
         }

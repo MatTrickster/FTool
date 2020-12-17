@@ -1,5 +1,7 @@
 package com.e.ftool;
 
+import android.util.Log;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
@@ -49,6 +51,14 @@ public class DirectionsJSONParser {
                             .getJSONObject("duration");
                     HashMap<String, String> hmDuration = new HashMap<String, String>();
                     hmDuration.put("duration", jDuration.getString("text"));
+
+                    JSONObject xx = ((JSONObject) jLegs.get(j)).getJSONObject("start_location");
+                    JSONObject yy = ((JSONObject) jLegs.get(j)).getJSONObject("end_location");
+
+                    hmDuration.put("s_lat",xx.getString("lat"));
+                    hmDuration.put("s_lng",xx.getString("lng"));
+                    hmDuration.put("e_lat",yy.getString("lat"));
+                    hmDuration.put("e_lng",yy.getString("lng"));
 
                     /** Adding distance object to the path */
                     path.add(hmDistance);

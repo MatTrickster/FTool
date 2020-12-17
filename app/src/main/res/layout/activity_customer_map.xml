@@ -15,6 +15,7 @@
         android:layout_height="match_parent" />
 
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/filter"
         app:strokeColor="#000"
         app:strokeWidth="1dp"
         android:layout_margin="10dp"

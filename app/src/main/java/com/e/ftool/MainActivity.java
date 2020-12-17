@@ -16,6 +16,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.gesture.GestureLibraries;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
@@ -30,6 +31,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -69,6 +71,7 @@ import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -97,34 +100,30 @@ public class MainActivity extends AppCompatActivity {
     TextView temp, city, wind, humidity, driversAround;
     ImageView icon;
     CardView weatherCard, driversAroundCard;
-    ProgressBar progressBar1, progressBar2, progressBar3;
     FloatingActionButton book;
     Location currentLocation;
     FusedLocationProviderClient fusedLocationProviderClient;
-
     String uId;
     DatabaseReference cRef, dRef;
     ValueEventListener v1;
-
     LinearLayout currentOrder;
     TextView noOrder;
-
     String orderStatus, myDriverKey;
     Driver myDriver;
-
     TextView driverName, driverNumber, driverRating, status;
     TextView callDriver, cancelOrder;
-
+    TextView service,land,charge;
     RelativeLayout viewDriver;
     String driverImgUrl = "null";
     CircleImageView driverImage;
-
     ArrayList<HashMap<String, String>> list;
-
     LocationRequest locationRequest;
     LocationCallback mLocationCallback;
-
     ImageView info;
+    ProgressBar progressBar;
+    LinearLayout serviceBottomSheet;
+    Button go;
+    RecyclerView recyclerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -137,11 +136,8 @@ public class MainActivity extends AppCompatActivity {
         humidity = findViewById(R.id.humidity);
         icon = findViewById(R.id.icon);
         weatherCard = findViewById(R.id.weather_card);
-        progressBar1 = findViewById(R.id.progress1);
         book = findViewById(R.id.book);
         driversAroundCard = findViewById(R.id.drivers_around_card);
-        progressBar2 = findViewById(R.id.progress2);
-        progressBar3 = findViewById(R.id.progress3);
         driversAround = findViewById(R.id.drivers_around);
         uId = getIntent().getStringExtra("uId");
         currentOrder = findViewById(R.id.current_order);
@@ -155,8 +151,15 @@ public class MainActivity extends AppCompatActivity {
         driverImage = findViewById(R.id.driver_img);
         viewDriver = findViewById(R.id.view_driver);
         info = findViewById(R.id.info);
+        service = findViewById(R.id.service);
+        land = findViewById(R.id.land);
+        charge = findViewById(R.id.charge);
+        progressBar = findViewById(R.id.progress);
+        serviceBottomSheet = findViewById(R.id.services_bottom_sheet);
+        go = findViewById(R.id.go);
+        recyclerView = findViewById(R.id.services_recycler);
 
-        attachServices();
+        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(serviceBottomSheet);
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
         v1 = cRef.addValueEventListener(new ValueEventListener() {
@@ -186,6 +189,13 @@ public class MainActivity extends AppCompatActivity {
                                     snapshot.child("number").getValue().toString(), "",
                                     snapshot.child("rating").getValue().toString(), driverImgUrl);
 
+                            if(orderStatus.equals("requested") || orderStatus.equals("accepted")) {
+                                String s = snapshot.child("customer_request").child("service").getValue().toString();
+                                land.setText(snapshot.child("customer_request").child("land").getValue().toString());
+                                charge.setText(snapshot.child("services").child(s).child("charge").getValue().toString());
+                                service.setText(s);
+                            }
+
                             driverName.setText(myDriver.getName());
                             driverNumber.setText(myDriver.getNumber());
                             driverRating.setText(myDriver.getRating());
@@ -193,7 +203,6 @@ public class MainActivity extends AppCompatActivity {
                             if (!driverImgUrl.equals("null"))
                                 Glide.with(getApplicationContext()).load(driverImgUrl).into(driverImage);
 
-                            progressBar3.setVisibility(View.GONE);
                         }
 
                         @Override
@@ -281,8 +290,6 @@ public class MainActivity extends AppCompatActivity {
                         dialog.show();
 
                     }
-                } else {
-                    progressBar3.setVisibility(View.GONE);
                 }
 
             }
@@ -305,8 +312,7 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-        book.setOnClickListener(view -> {
-
+        go.setOnClickListener(view -> {
             if (selectedServicePos == -1) {
 
                 Toast.makeText(MainActivity.this, "Select Desired Service", Toast.LENGTH_SHORT).show();
@@ -320,6 +326,18 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
 
+        });
+
+        book.setOnClickListener(view -> {
+
+            if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED){
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                book.setImageResource(R.drawable.cancel);
+                attachServices();
+            }else {
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                book.setImageResource(R.drawable.book);
+            }
         });
 
         callDriver.setOnClickListener(view -> {
@@ -415,7 +433,6 @@ public class MainActivity extends AppCompatActivity {
     public void attachServices() {
 
         list = new ArrayList<>();
-        RecyclerView recyclerView = findViewById(R.id.services_recycler);
         LinearLayoutManager layoutManager = new LinearLayoutManager(MainActivity.this,
                 LinearLayoutManager.HORIZONTAL, false);
         recyclerView.setLayoutManager(layoutManager);
@@ -463,7 +480,7 @@ public class MainActivity extends AppCompatActivity {
                     location.setLongitude(lng);
 
                     float dis = currentLocation.distanceTo(location);
-                    if (dis < 5000) {
+                    if (dis < 50000) {
                         count[0]++;
                     }
                 }
@@ -478,7 +495,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        progressBar2.setVisibility(View.GONE);
         driversAroundCard.setVisibility(View.VISIBLE);
     }
 
@@ -489,8 +505,8 @@ public class MainActivity extends AppCompatActivity {
 
         StringRequest request = new StringRequest(Request.Method.GET, url, response -> {
 
-            progressBar1.setVisibility(View.GONE);
             weatherCard.setVisibility(View.VISIBLE);
+            progressBar.setVisibility(View.GONE);
 
             try {
                 JSONObject jsonObject = new JSONObject(response);
