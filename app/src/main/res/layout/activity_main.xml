@@ -18,10 +18,13 @@
             android:orientation="vertical">
 
             <ProgressBar
+                android:layout_marginTop="-11dp"
                 android:id="@+id/progress"
+                style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_margin="10dp" />
+                android:layout_height="30dp"
+                android:indeterminate="true"
+                />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/weather_card"
@@ -487,42 +490,42 @@
             app:layout_behavior="@string/bottom_sheet_behavior">
 
             <com.google.android.material.card.MaterialCardView
-                app:strokeColor="#000"
-                app:strokeWidth="2dp"
-                app:cardElevation="30dp"
-                android:layout_margin="5dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="30dp">
+                android:layout_margin="5dp"
+                app:cardCornerRadius="30dp"
+                app:cardElevation="30dp"
+                app:strokeColor="#000"
+                app:strokeWidth="2dp">
 
                 <LinearLayout
-                    android:layout_marginBottom="80dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="80dp"
                     android:orientation="vertical">
 
                     <TextView
-                        android:gravity="center"
                         android:id="@+id/select_services"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="10dp"
+                        android:gravity="center"
                         android:text="Services Available"
                         android:textColor="#000"
                         android:textSize="16dp"
                         android:textStyle="bold" />
-
+                    
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/services_recycler"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
 
                     <Button
-                        android:layout_margin="10dp"
-                        android:text="Go"
                         android:id="@+id/go"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"/>
+                        android:layout_height="wrap_content"
+                        android:layout_margin="10dp"
+                        android:text="Go" />
 
                 </LinearLayout>
 
@@ -544,7 +547,7 @@
             android:layout_height="wrap_content"
             android:src="@drawable/book"
             app:layout_anchor="@id/bottomAppBar"
-            app:maxImageSize="50dp"/>
+            app:maxImageSize="50dp" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

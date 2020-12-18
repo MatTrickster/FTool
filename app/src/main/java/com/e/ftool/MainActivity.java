@@ -3,6 +3,7 @@ package com.e.ftool;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.ContextThemeWrapper;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -18,6 +19,8 @@ import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.gesture.GestureLibraries;
 import android.graphics.Color;
+import android.graphics.drawable.AnimationDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
@@ -73,6 +76,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.database.DataSnapshot;
@@ -452,6 +457,8 @@ public class MainActivity extends AppCompatActivity {
 
                         }
 
+
+
                         services.notifyDataSetChanged();
                     }
 
@@ -606,6 +613,13 @@ public class MainActivity extends AppCompatActivity {
 
         if(v1 != null)
             cRef.removeEventListener(v1);
+    }
+
+    public void History(View v){
+
+        Intent intent = new Intent(MainActivity.this,HistoryActivity.class);
+        startActivity(intent);
+
     }
 
     public void Profile(View v){
