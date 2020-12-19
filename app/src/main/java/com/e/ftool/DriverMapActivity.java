@@ -213,12 +213,28 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         bottomSheet.setVisibility(View.VISIBLE);
         BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         bottomSheetBehavior.setHideable(false);
-
         ImageView imageView = findViewById(R.id.click);
+
+        bottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull View bottomSheet, int newState) {
+                if(newState == BottomSheetBehavior.STATE_EXPANDED)
+                    imageView.setImageResource(R.drawable.ic_down);
+                else
+                    imageView.setImageResource(R.drawable.ic_up);
+            }
+
+            @Override
+            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+
+            }
+        });
+
         imageView.setOnClickListener(view -> {
             if (bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED)
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-
+            else
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
         });
 
 

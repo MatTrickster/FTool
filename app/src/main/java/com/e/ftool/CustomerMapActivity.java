@@ -75,11 +75,15 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.Dash;
+import com.google.android.gms.maps.model.Dot;
+import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PatternItem;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -108,6 +112,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.Permission;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -127,7 +132,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     Marker cMarker;
     DatabaseReference cRef, driversRef, driverLocationRef;
     DataSnapshot driversSnap, customerSnap;
-    static Polyline polyline = null;
+    static Polyline polyline = null,polyline1 = null, polyline2 = null;
     String driverSelectedKey;
     Boolean riding;
     ValueEventListener v1, v2;
@@ -143,6 +148,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     AlertDialog.Builder builder;
     Dialog dialog;
     MaterialCardView filter;
+    LinearLayout bottomSheet;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -225,27 +231,33 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         } else {
 
-            HashMap<String, Object> map = new HashMap<>();
-            map.put("c_lat", currentLocation.getLatitude());
-            map.put("c_lng", currentLocation.getLongitude());
-            map.put("service", service);
-            map.put("land",land);
-            map.put("contact", customerSnap.child("number").getValue().toString());
-            map.put("name", customerSnap.child("name").getValue().toString());
-            map.put("uId", uId);
-            map.put("status", "requested");
+            AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this);
+            builder.setTitle("Confirm Request?");
+            builder.setPositiveButton("Request", (dialogInterface, i) -> {
 
-            driversRef.child(key).child("customer_request").setValue(map);
+                HashMap<String, Object> map = new HashMap<>();
+                map.put("c_lat", currentLocation.getLatitude());
+                map.put("c_lng", currentLocation.getLongitude());
+                map.put("service", service);
+                map.put("land",land);
+                map.put("contact", customerSnap.child("number").getValue().toString());
+                map.put("name", customerSnap.child("name").getValue().toString());
+                map.put("uId", uId);
+                map.put("status", "requested");
 
-            HashMap<String, String> map1 = new HashMap<>();
-            map1.put("status", "requested");
-            map1.put("driver_key", key);
-            cRef.child("request").setValue(map1);
+                driversRef.child(key).child("customer_request").setValue(map);
 
-            Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
-            finish();
+                HashMap<String, String> map1 = new HashMap<>();
+                map1.put("status", "requested");
+                map1.put("driver_key", key);
+                cRef.child("request").setValue(map1);
+
+                Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
+                finish();
+
+            }).setNegativeButton("Cancel", (dialogInterface, i) -> { });
+
         }
-
     }
 
     public void getDriversAround(String range) {
@@ -360,7 +372,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(2000);
+        locationRequest.setInterval(10000);
 
         mLocationCallback = new LocationCallback() {
             @Override
@@ -369,8 +381,6 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 if (locationResult.getLastLocation() == null)
                     return;
                 currentLocation = locationResult.getLastLocation();
-
-                fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
 
                 if (riding) {
                     drawRoute();
@@ -407,6 +417,70 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         };
 
         fusedLocationProviderClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
+
+    }
+
+    public void showDriverDetails(){
+
+        bottomSheet = findViewById(R.id.bottom_sheet);
+        bottomSheet.setVisibility(View.VISIBLE);
+        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        bottomSheetBehavior.setHideable(false);
+        ImageView imageView = findViewById(R.id.click);
+
+        bottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull View bottomSheet, int newState) {
+                if(newState == BottomSheetBehavior.STATE_EXPANDED)
+                    imageView.setImageResource(R.drawable.ic_down);
+                else
+                    imageView.setImageResource(R.drawable.ic_up);
+            }
+
+            @Override
+            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+
+            }
+        });
+
+        imageView.setOnClickListener(view -> {
+            if (bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED)
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            else
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+
+        });
+
+        TextView driverName = findViewById(R.id.user_sheet_name);
+        TextView driverNumber = findViewById(R.id.user_sheet_number);
+        TextView driverDistance = findViewById(R.id.user_sheet_distance);
+
+        driverName.setText("Customer Name\t\t\t:\t\t"
+                + driversSnap.child(driverSelectedKey).child("name").getValue().toString());
+        driverNumber.setText("Customer Number\t\t:\t\t"
+                + driversSnap.child(driverSelectedKey).child("number").getValue().toString());
+
+        if (time_distance[0] == null)
+            driverDistance.setText("Fetching Time and Distance ...");
+        else
+            driverDistance.setText("Distance : " + time_distance[0] + "\t\tETA : " + time_distance[1]);
+
+        Button callCustomer = findViewById(R.id.call_user);
+        callCustomer.setOnClickListener(view -> {
+
+            if (ContextCompat.checkSelfPermission(CustomerMapActivity.this,
+                    Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(CustomerMapActivity.this,
+                        new String[]{Manifest.permission.CALL_PHONE}, 100);
+
+            } else {
+
+                Intent callIntent = new Intent(Intent.ACTION_CALL);
+                callIntent.setData(Uri.parse("tel:"
+                        + driversSnap.child(driverSelectedKey).child("number").getValue().toString()));
+                startActivity(callIntent);
+            }
+        });
 
     }
 
@@ -493,6 +567,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         if (v2 != null)
             driverLocationRef.removeEventListener(v2);
+
+        if(fusedLocationProviderClient != null)
+            fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
 
     public void drawRoute() {
@@ -646,20 +723,57 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         protected void onPostExecute(List<List<HashMap<String, String>>> lists) {
             super.onPostExecute(lists);
             ArrayList points = null;
-            PolylineOptions polylineOptions = null;
+            PolylineOptions polylineOptions = null, polylineOptions1 = null, polylineOptions2 = null;
 
             for (List<HashMap<String, String>> path : lists) {
                 points = new ArrayList();
                 polylineOptions = new PolylineOptions();
+                polylineOptions1 = new PolylineOptions();
+                polylineOptions2 = new PolylineOptions();
                 int x = 0;
                 for (HashMap<String, String> point : path) {
 
+                    Log.i("TAG",point+"\nx "+time_distance[0]);
                     x++;
                     if (x == 1) {
                         time_distance[0] = point.get("distance");
                         continue;
                     } else if (x == 2) {
                         time_distance[1] = point.get("duration");
+
+                        double sLat = Double.parseDouble(point.get("s_lat"));
+                        double sLng = Double.parseDouble(point.get("s_lng"));
+                        double eLat = Double.parseDouble(point.get("e_lat"));
+                        double eLng = Double.parseDouble(point.get("e_lng"));
+
+                        if(sLat == eLat && sLng == eLng)
+                            continue;
+
+                        LatLng l1 = new LatLng(sLat,sLng);
+                        LatLng l2 = new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
+
+                        LatLng l3 = new LatLng(eLat,eLng);
+                        LatLng l4 = new LatLng(driverLatLng.latitude,driverLatLng.longitude);
+
+                        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                        builder.include(l1);
+                        builder.include(l2);
+                        builder.include(l3);
+                        builder.include(l4);
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 140));
+
+                        polylineOptions2.add(l3);
+                        polylineOptions2.add(l4);
+                        polylineOptions2.width(10f);
+                        polylineOptions2.color(Color.parseColor("#72bcd4"));
+                        polylineOptions2.geodesic(true);
+
+                        polylineOptions1.add(l1);
+                        polylineOptions1.add(l2);
+                        polylineOptions1.width(10f);
+                        polylineOptions1.color(Color.parseColor("#72bcd4"));
+                        polylineOptions1.geodesic(true);
+
                         continue;
                     }
 
@@ -672,11 +786,29 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 polylineOptions.width(14f);
                 polylineOptions.color(Color.parseColor("#72bcd4"));
                 polylineOptions.geodesic(true);
+
+                showDriverDetails();
             }
+
             if (polyline != null)
                 polyline.remove();
+            if(polyline1 != null)
+                polyline1.remove();
+            if(polyline2 != null)
+                polyline2.remove();
             if (polylineOptions != null) {
                 polyline = map.addPolyline(polylineOptions);
+            }
+
+            List<PatternItem> pattern = Arrays.asList(new Dot(), new Gap(10));
+
+            if(polylineOptions1 != null){
+                polyline1 = map.addPolyline(polylineOptions1);
+                polyline1.setPattern(pattern);
+            }
+            if(polylineOptions2 != null){
+                polyline2 = map.addPolyline(polylineOptions2);
+                polyline2.setPattern(pattern);
             }
         }
     }

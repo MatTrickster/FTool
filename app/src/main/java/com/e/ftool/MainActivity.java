@@ -129,6 +129,8 @@ public class MainActivity extends AppCompatActivity {
     LinearLayout serviceBottomSheet;
     Button go;
     RecyclerView recyclerView;
+    View dim;
+    BottomSheetBehavior bottomSheetBehavior;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -163,8 +165,26 @@ public class MainActivity extends AppCompatActivity {
         serviceBottomSheet = findViewById(R.id.services_bottom_sheet);
         go = findViewById(R.id.go);
         recyclerView = findViewById(R.id.services_recycler);
+        dim = findViewById(R.id.dim);
 
-        BottomSheetBehavior bottomSheetBehavior = BottomSheetBehavior.from(serviceBottomSheet);
+        bottomSheetBehavior = BottomSheetBehavior.from(serviceBottomSheet);
+        bottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull View bottomSheet, int newState) {
+                if(newState == BottomSheetBehavior.STATE_EXPANDED){
+                    book.setImageResource(R.drawable.cancel);
+                    dim.setVisibility(View.VISIBLE);
+                }else {
+                    book.setImageResource(R.drawable.book);
+                    dim.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+
+            }
+        });
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
         v1 = cRef.addValueEventListener(new ValueEventListener() {
@@ -306,6 +326,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         checkGPS();
+        attachServices();
 
         info.setOnClickListener(view -> {
 
@@ -337,11 +358,8 @@ public class MainActivity extends AppCompatActivity {
 
             if(bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED){
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                book.setImageResource(R.drawable.cancel);
-                attachServices();
             }else {
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
-                book.setImageResource(R.drawable.book);
             }
         });
 
@@ -354,25 +372,39 @@ public class MainActivity extends AppCompatActivity {
 
             } else {
 
-                Intent callIntent = new Intent(Intent.ACTION_CALL);
-                callIntent.setData(Uri.parse("tel:" + myDriver.getNumber()));
-                startActivity(callIntent);
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle("Confirm Call?");
+                builder.setPositiveButton("Call", (dialogInterface, i) -> {
+
+                    Intent callIntent = new Intent(Intent.ACTION_CALL);
+                    callIntent.setData(Uri.parse("tel:" + myDriver.getNumber()));
+                    startActivity(callIntent);
+
+                }).setNegativeButton("No", (dialogInterface, i) -> { });
+                builder.create().show();
             }
 
         });
 
         cancelOrder.setOnClickListener(view -> {
 
-            if (orderStatus.equals("requested")) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            builder.setTitle("Confirm Cancel?");
+            builder.setPositiveButton("Yes", (dialogInterface, i) -> {
 
-                cRef.child("request").removeValue();
+                if (orderStatus.equals("requested")) {
 
-                noOrder.setVisibility(View.VISIBLE);
-                currentOrder.setVisibility(View.GONE);
-            } else {
-                Toast.makeText(MainActivity.this, "Order is Accepted, Cannot be cancelled Now!",
-                        Toast.LENGTH_SHORT).show();
-            }
+                    cRef.child("request").removeValue();
+
+                    noOrder.setVisibility(View.VISIBLE);
+                    currentOrder.setVisibility(View.GONE);
+                } else {
+                    Toast.makeText(MainActivity.this, "Order is Accepted, Cannot be cancelled Now!",
+                            Toast.LENGTH_SHORT).show();
+                }
+
+            }).setNegativeButton("No", (dialogInterface, i) -> { });
+            builder.create().show();
 
         });
 
@@ -456,8 +488,6 @@ public class MainActivity extends AppCompatActivity {
                             list.add(map);
 
                         }
-
-
 
                         services.notifyDataSetChanged();
                     }
@@ -608,6 +638,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
 
@@ -618,6 +655,8 @@ public class MainActivity extends AppCompatActivity {
     public void History(View v){
 
         Intent intent = new Intent(MainActivity.this,HistoryActivity.class);
+        intent.putExtra("uId",uId);
+        intent.putExtra("user","c");
         startActivity(intent);
 
     }

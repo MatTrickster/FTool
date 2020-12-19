@@ -10,11 +10,16 @@ import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.HashMap;
+import java.util.List;
+
 public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHolder> {
 
     View v;
+    List<HashMap<String,String>> items;
 
-    HistoryAdapter(){
+    HistoryAdapter(List<HashMap<String,String>> items){
+        this.items = items;
     }
 
     @NonNull
@@ -27,28 +32,32 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
 
-        Log.i("TAG","Cons");
-        holder.orderId.setText("Order "+position);
+        String date = items.get(position).get("time_date");
+        date = date.substring(0,date.indexOf(" "));
+
+        holder.service.setText(items.get(position).get("service"));
+        holder.date.setText(date);
+        holder.amount.setText("Rs. 210");
+        holder.sno.setText(position+1+".");
 
     }
 
     @Override
     public int getItemCount() {
-        return 10;
+        return items.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder{
 
-        TextView orderId, serviceDate, status;
-        CardView statusCard;
+        TextView service, date, amount, sno;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
 
-            orderId = v.findViewById(R.id.order_id);
-            serviceDate = v.findViewById(R.id.service_date);
-            status = v.findViewById(R.id.status);
-            statusCard = v.findViewById(R.id.status_card);
+            service = v.findViewById(R.id.service);
+            date = v.findViewById(R.id.date);
+            amount = v.findViewById(R.id.amount);
+            sno = v.findViewById(R.id.sno);
         }
     }
 }
