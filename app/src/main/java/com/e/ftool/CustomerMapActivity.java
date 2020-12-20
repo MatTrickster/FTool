@@ -3,8 +3,11 @@ package com.e.ftool;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -91,6 +94,8 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -113,6 +118,7 @@ import java.net.URL;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -132,7 +138,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     Marker cMarker;
     DatabaseReference cRef, driversRef, driverLocationRef;
     DataSnapshot driversSnap, customerSnap;
-    static Polyline polyline = null,polyline1 = null, polyline2 = null;
+    static Polyline polyline = null, polyline1 = null, polyline2 = null;
     String driverSelectedKey;
     Boolean riding;
     ValueEventListener v1, v2;
@@ -149,6 +155,12 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
     Dialog dialog;
     MaterialCardView filter;
     LinearLayout bottomSheet;
+    CardView driversBottomCard;
+    RecyclerView driversList;
+    ChipGroup chipGroup;
+    DriversAdapter driversAdapter;
+    RecyclerView.LayoutManager layoutManager;
+    BottomSheetBehavior driversBottomSheet;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -166,19 +178,55 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         driversAround = findViewById(R.id.drivers_around);
         rangeSpinner = findViewById(R.id.range_spinner);
         filter = findViewById(R.id.filter);
+        driversBottomCard = findViewById(R.id.drivers_card);
+        driversList = findViewById(R.id.drivers_list);
+        chipGroup = findViewById(R.id.chip_group);
+        layoutManager = new LinearLayoutManager(CustomerMapActivity.this, LinearLayoutManager.VERTICAL,
+                false);
+        driversBottomSheet = BottomSheetBehavior.from(driversBottomCard);
+
+        chipGroup.setOnCheckedChangeListener((group, checkedId) -> {
+
+            if(checkedId == R.id.l_to_h){
+                drivers.sort((driver, t1) -> {
+
+                    int charge1 = Integer.parseInt(driver.getServiceCharge());
+                    int charge2 = Integer.parseInt(t1.getServiceCharge());
+
+                    return charge1-charge2;
+                });
+
+            }else if(checkedId == R.id.h_rating){
+
+                drivers.sort((driver, t1) -> {
+
+                    int charge1 = Integer.parseInt(driver.getServiceCharge());
+                    int charge2 = Integer.parseInt(t1.getServiceCharge());
+
+                    return charge2-charge1;
+                });
+
+            }
+
+            driversBottomSheet.setState(BottomSheetBehavior.STATE_EXPANDED);
+
+            driversAdapter = new DriversAdapter(CustomerMapActivity.this,drivers,map,driversBottomSheet);
+            driversList.setAdapter(driversAdapter);
+
+        });
 
         rangeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 range = rangeSpinner.getSelectedItem().toString();
-                range = range.substring(0,range.indexOf(" "));
+                range = range.substring(0, range.indexOf(" "));
 
                 builder = new AlertDialog.Builder(CustomerMapActivity.this);
 
-                if(riding) {
+                if (riding) {
                     filter.setVisibility(View.GONE);
                     builder.setMessage("Getting Driver Location ...");
-                }else{
+                } else {
                     builder.setMessage("Getting Drivers ...");
                 }
 
@@ -202,7 +250,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) { }
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
         });
 
         cRef = FirebaseDatabase.getInstance().getReference("customers/" + uId + "/");
@@ -218,12 +267,13 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) { }
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
         });
 
     }
 
-    public void request(String service, String key,String land) {
+    public void request(String service, String key, String land) {
 
         if (driversSnap.child(key).child("services").child(service).getChildrenCount() == 0) {
             Toast.makeText(CustomerMapActivity.this, "Service Not Available For Selected Driver",
@@ -239,7 +289,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 map.put("c_lat", currentLocation.getLatitude());
                 map.put("c_lng", currentLocation.getLongitude());
                 map.put("service", service);
-                map.put("land",land);
+                map.put("land", land);
                 map.put("contact", customerSnap.child("number").getValue().toString());
                 map.put("name", customerSnap.child("name").getValue().toString());
                 map.put("uId", uId);
@@ -255,7 +305,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
                 finish();
 
-            }).setNegativeButton("Cancel", (dialogInterface, i) -> { });
+            }).setNegativeButton("Cancel", (dialogInterface, i) -> {
+            });
 
         }
     }
@@ -279,7 +330,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                     location.setLongitude(lng);
 
                     float dis = currentLocation.distanceTo(location);
-                    if (dis < Integer.parseInt(range)*1000) {
+                    if (dis < Integer.parseInt(range) * 1000) {
 
                         boolean desiredServiceMatches = false;
                         String serviceCharge = "";
@@ -310,19 +361,25 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                 }
 
-                driversAround.setText(""+drivers.size());
+                driversAround.setText("" + drivers.size());
+                addDriversToMap();
 
-                addDrivers();
+                driversBottomCard.setVisibility(View.VISIBLE);
+
+                driversAdapter = new DriversAdapter(CustomerMapActivity.this,drivers,map,driversBottomSheet);
+                driversList.setLayoutManager(layoutManager);
+                driversList.setAdapter(driversAdapter);
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) { }
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
         });
     }
 
-    public void addDrivers() {
+    public void addDriversToMap() {
 
-        for(Marker m:driversMarkers){
+        for (Marker m : driversMarkers) {
             m.remove();
         }
         driversMarkers.clear();
@@ -345,10 +402,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         if (drivers.size() != 0)
             map.animateCamera(CameraUpdateFactory.newLatLngBounds(builderB.build(), 100));
-        else{
+        else {
             builder = new AlertDialog.Builder(CustomerMapActivity.this);
             builder.setMessage("No Driver Found!\nTry Increasing range.")
-                    .setPositiveButton("OK", (dialogInterface, i) -> { });
+                    .setPositiveButton("OK", (dialogInterface, i) -> {
+                    });
             dialog = builder.create();
             dialog.show();
         }
@@ -386,9 +444,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                     drawRoute();
                 } else {
 
-                    if(cMarker != null)
+                    fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+
+                    if (cMarker != null)
                         cMarker.remove();
-                    if(cCircle != null)
+                    if (cCircle != null)
                         cCircle.remove();
 
                     LatLng l1 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
@@ -420,7 +480,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     }
 
-    public void showDriverDetails(){
+    public void showDriverDetails() {
 
         bottomSheet = findViewById(R.id.bottom_sheet);
         bottomSheet.setVisibility(View.VISIBLE);
@@ -431,7 +491,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         bottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
-                if(newState == BottomSheetBehavior.STATE_EXPANDED)
+                if (newState == BottomSheetBehavior.STATE_EXPANDED)
                     imageView.setImageResource(R.drawable.ic_down);
                 else
                     imageView.setImageResource(R.drawable.ic_up);
@@ -491,11 +551,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         map.setOnMarkerClickListener(marker -> {
 
-            if(marker.getTag().equals("Customer"))
+            if (marker.getTag().equals("Customer"))
                 return false;
 
             AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this);
-            View v = getLayoutInflater().inflate(R.layout.driver_details,null);
+            View v = getLayoutInflater().inflate(R.layout.driver_details, null);
             TextView dName = v.findViewById(R.id.driver_name);
             TextView dNumber = v.findViewById(R.id.driver_number);
             CircleImageView dImg = v.findViewById(R.id.driver_img);
@@ -504,9 +564,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             TextInputEditText land = v.findViewById(R.id.land);
             Button request = v.findViewById(R.id.request);
 
-            for(int i=0;i<drivers.size();i++){
+            for (int i = 0; i < drivers.size(); i++) {
 
-                if(drivers.get(i).getKey().equals(marker.getTag())){
+                if (drivers.get(i).getKey().equals(marker.getTag())) {
 
                     driverSelectedKey = drivers.get(i).getKey();
                     dName.setText(drivers.get(i).getName());
@@ -530,14 +590,14 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                     Toast.makeText(CustomerMapActivity.this, "Already One Ongoing Order",
                             Toast.LENGTH_SHORT).show();
                 } else {
-                    if(land.getText().length()==0)
+                    if (land.getText().length() == 0)
                         land.setError("Fill Detail");
-                    else if(land.getText().toString().equals("0"))
+                    else if (land.getText().toString().equals("0"))
                         land.setError("Field Can't be zero");
-                    else if(Integer.parseInt(land.getText().toString())>10)
+                    else if (Integer.parseInt(land.getText().toString()) > 10)
                         land.setError("Land Can't be more than 10");
                     else
-                        request(desiredService, driverSelectedKey,land.getText().toString());
+                        request(desiredService, driverSelectedKey, land.getText().toString());
                 }
 
             });
@@ -568,15 +628,15 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         if (v2 != null)
             driverLocationRef.removeEventListener(v2);
 
-        if(fusedLocationProviderClient != null)
+        if (fusedLocationProviderClient != null)
             fusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
 
     public void drawRoute() {
 
         map.clear();
-        if(dialog != null)
-        dialog.dismiss();
+        if (dialog != null)
+            dialog.dismiss();
 
         driverLocationRef = FirebaseDatabase.getInstance().getReference("drivers_available_loc/" +
                 driverSelectedKey + "/");
@@ -733,7 +793,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                 int x = 0;
                 for (HashMap<String, String> point : path) {
 
-                    Log.i("TAG",point+"\nx "+time_distance[0]);
+                    Log.i("TAG", point + "\nx " + time_distance[0]);
                     x++;
                     if (x == 1) {
                         time_distance[0] = point.get("distance");
@@ -746,14 +806,14 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                         double eLat = Double.parseDouble(point.get("e_lat"));
                         double eLng = Double.parseDouble(point.get("e_lng"));
 
-                        if(sLat == eLat && sLng == eLng)
+                        if (sLat == eLat && sLng == eLng)
                             continue;
 
-                        LatLng l1 = new LatLng(sLat,sLng);
-                        LatLng l2 = new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude());
+                        LatLng l1 = new LatLng(sLat, sLng);
+                        LatLng l2 = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
 
-                        LatLng l3 = new LatLng(eLat,eLng);
-                        LatLng l4 = new LatLng(driverLatLng.latitude,driverLatLng.longitude);
+                        LatLng l3 = new LatLng(eLat, eLng);
+                        LatLng l4 = new LatLng(driverLatLng.latitude, driverLatLng.longitude);
 
                         LatLngBounds.Builder builder = new LatLngBounds.Builder();
                         builder.include(l1);
@@ -792,9 +852,9 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
             if (polyline != null)
                 polyline.remove();
-            if(polyline1 != null)
+            if (polyline1 != null)
                 polyline1.remove();
-            if(polyline2 != null)
+            if (polyline2 != null)
                 polyline2.remove();
             if (polylineOptions != null) {
                 polyline = map.addPolyline(polylineOptions);
@@ -802,11 +862,11 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
             List<PatternItem> pattern = Arrays.asList(new Dot(), new Gap(10));
 
-            if(polylineOptions1 != null){
+            if (polylineOptions1 != null) {
                 polyline1 = map.addPolyline(polylineOptions1);
                 polyline1.setPattern(pattern);
             }
-            if(polylineOptions2 != null){
+            if (polylineOptions2 != null) {
                 polyline2 = map.addPolyline(polylineOptions2);
                 polyline2.setPattern(pattern);
             }

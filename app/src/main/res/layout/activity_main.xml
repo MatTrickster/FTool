@@ -521,18 +521,40 @@
                         android:textColor="#000"
                         android:textSize="16dp"
                         android:textStyle="bold" />
-                    
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/services_recycler"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
 
-                    <Button
-                        android:id="@+id/go"
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:singleSelection="true">
+
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <LinearLayout
+                        android:layout_margin="10dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_margin="10dp"
-                        android:text="Go" />
+                        >
+
+                        <Button
+                            android:layout_marginEnd="10dp"
+                            android:id="@+id/go"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:text="Go" />
+
+                        <Button
+                            android:layout_marginStart="10dp"
+                            android:id="@+id/hide"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:text="Back" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 

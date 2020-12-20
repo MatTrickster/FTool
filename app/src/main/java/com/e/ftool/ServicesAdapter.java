@@ -132,7 +132,6 @@ public class ServicesAdapter extends RecyclerView.Adapter<ServicesAdapter.ViewHo
 
         ImageView icon;
         TextView title,removeService;
-        LinearLayout layout;
 
         ViewHolder(View view) {
             super(view);
@@ -140,15 +139,7 @@ public class ServicesAdapter extends RecyclerView.Adapter<ServicesAdapter.ViewHo
             icon = view.findViewById(R.id.service_icon);
             title = view.findViewById(R.id.service_title);
             removeService = view.findViewById(R.id.remove_service);
-            layout = view.findViewById(R.id.layout);
 
-            layout.setOnClickListener(view1 -> {
-
-                MainActivity.selectedServicePos = getAdapterPosition();
-                Toast.makeText(context,"Selected "+list.get(getAdapterPosition())
-                        .get("title"),Toast.LENGTH_SHORT).show();
-
-            });
         }
 
     }

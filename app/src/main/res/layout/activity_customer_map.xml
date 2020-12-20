@@ -1,70 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@android:color/white"
     android:orientation="vertical"
     tools:context="com.e.ftool.CustomerMapActivity">
 
     <fragment
+        android:layout_marginBottom="50dp"
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/filter"
-        app:strokeColor="#000"
-        app:strokeWidth="1dp"
-        android:layout_margin="10dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        app:strokeColor="#000"
+        app:strokeWidth="1dp">
 
         <LinearLayout
-            android:layout_margin="10dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="10dp"
             android:orientation="horizontal">
 
             <TextView
-                android:gravity="center"
-                android:textStyle="bold"
-                android:textColor="#000"
-                android:text="Drivers :"
                 android:layout_width="0dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="2"
-                android:layout_height="wrap_content"/>
+                android:gravity="center"
+                android:text="Drivers :"
+                android:textColor="#000"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/drivers_around"
-                android:gravity="center"
-                android:text="0"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"/>
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="0" />
 
             <TextView
-                android:gravity="center"
-                android:textStyle="bold"
-                android:textColor="#000"
-                android:text="Range :"
                 android:layout_width="0dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="2"
-                android:layout_height="wrap_content"/>
+                android:gravity="center"
+                android:text="Range :"
+                android:textColor="#000"
+                android:textStyle="bold" />
 
             <Spinner
                 android:id="@+id/range_spinner"
-                android:entries="@array/range"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="3"/>
+                android:layout_weight="3"
+                android:entries="@array/range" />
 
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
 
-    <include layout="@layout/driver_details_sheet"/>
+    <include layout="@layout/driver_details_sheet" />
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/drivers_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:behavior_hideable="true"
+        app:behavior_peekHeight="80dp"
+        app:cardCornerRadius="20dp"
+        app:layout_behavior="@string/bottom_sheet_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:layout_marginStart="170dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="170dp"
+                android:layout_marginBottom="10dp"
+                app:cardBackgroundColor="#000"
+                app:cardCornerRadius="10dp" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chip_group"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/l_to_h"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Low To High" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/h_rating"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Highest Rating" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/closest"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Closest" />
+
+                </com.google.android.material.chip.ChipGroup>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/drivers_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

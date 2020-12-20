@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -61,13 +62,15 @@ public class ProfileActivity extends AppCompatActivity {
     LinearLayout servicesLayout;
     ServicesAdapter adapter;
     CircleImageView image;
-    TextView changePhoto;
+    TextView changePhoto, balText, addWithdraw;
     Uri photoUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
+
+        Objects.requireNonNull(this.getSupportActionBar()).hide();
 
         uId = getIntent().getStringExtra("uId");
         user = getIntent().getStringExtra("user");
@@ -80,8 +83,14 @@ public class ProfileActivity extends AppCompatActivity {
         servicesLayout = findViewById(R.id.services);
         image = findViewById(R.id.image);
         changePhoto = findViewById(R.id.change_photo);
+        balText = findViewById(R.id.bal_text);
+        addWithdraw = findViewById(R.id.add_withdraw);
 
         if (user.equals("d")) {
+
+            balText.setText("Your Earning");
+            addWithdraw.setText("Withdraw");
+
             reference = FirebaseDatabase.getInstance().getReference("drivers/" + uId + "/");
 
             LinearLayoutManager layoutManager = new LinearLayoutManager(this);

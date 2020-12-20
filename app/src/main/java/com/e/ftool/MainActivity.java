@@ -77,6 +77,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipDrawable;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -101,7 +102,6 @@ import de.hdodenhof.circleimageview.CircleImageView;
 
 public class MainActivity extends AppCompatActivity {
 
-    static int selectedServicePos = -1;
     TextView temp, city, wind, humidity, driversAround;
     ImageView icon;
     CardView weatherCard, driversAroundCard;
@@ -121,16 +121,16 @@ public class MainActivity extends AppCompatActivity {
     RelativeLayout viewDriver;
     String driverImgUrl = "null";
     CircleImageView driverImage;
-    ArrayList<HashMap<String, String>> list;
     LocationRequest locationRequest;
     LocationCallback mLocationCallback;
     ImageView info;
     ProgressBar progressBar;
     LinearLayout serviceBottomSheet;
-    Button go;
-    RecyclerView recyclerView;
+    Button go,hide;
     View dim;
     BottomSheetBehavior bottomSheetBehavior;
+    ChipGroup chipGroup;
+    String desiredService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -164,8 +164,16 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progress);
         serviceBottomSheet = findViewById(R.id.services_bottom_sheet);
         go = findViewById(R.id.go);
-        recyclerView = findViewById(R.id.services_recycler);
+        hide = findViewById(R.id.hide);
         dim = findViewById(R.id.dim);
+        chipGroup = findViewById(R.id.chip_group);
+
+        chipGroup.setOnCheckedChangeListener((group, checkedId) -> {
+
+            Chip chip = group.findViewById(checkedId);
+            desiredService = chip.getText().toString();
+
+        });
 
         bottomSheetBehavior = BottomSheetBehavior.from(serviceBottomSheet);
         bottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
@@ -339,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         go.setOnClickListener(view -> {
-            if (selectedServicePos == -1) {
+            if (desiredService == null) {
 
                 Toast.makeText(MainActivity.this, "Select Desired Service", Toast.LENGTH_SHORT).show();
 
@@ -348,11 +356,13 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, CustomerMapActivity.class);
                 intent.putExtra("uId", uId);
                 intent.putExtra("requested", orderStatus != null);
-                intent.putExtra("service", list.get(selectedServicePos).get("title"));
+                intent.putExtra("service", desiredService);
                 startActivity(intent);
             }
 
         });
+
+        hide.setOnClickListener(view -> bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED));
 
         book.setOnClickListener(view -> {
 
@@ -469,13 +479,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void attachServices() {
 
-        list = new ArrayList<>();
-        LinearLayoutManager layoutManager = new LinearLayoutManager(MainActivity.this,
-                LinearLayoutManager.HORIZONTAL, false);
-        recyclerView.setLayoutManager(layoutManager);
-        ServicesAdapter services = new ServicesAdapter(MainActivity.this, list, null, "c");
-        recyclerView.setAdapter(services);
-
         FirebaseDatabase.getInstance().getReference("services_available/")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -483,13 +486,17 @@ public class MainActivity extends AppCompatActivity {
 
                         for (DataSnapshot snap : snapshot.getChildren()) {
 
-                            HashMap<String, String> map = new HashMap<>();
-                            map.put("title", snap.getValue().toString());
-                            list.add(map);
+                            Chip chip = new Chip(MainActivity.this);
+                            ChipDrawable chipDrawable = ChipDrawable.createFromAttributes(MainActivity.this,
+                                    null,
+                                    0,
+                                    R.style.Widget_MaterialComponents_Chip_Choice);
+                            chip.setChipDrawable(chipDrawable);
+                            chip.setText(snap.getValue().toString());
+                            chipGroup.addView(chip);
 
                         }
 
-                        services.notifyDataSetChanged();
                     }
 
                     @Override
