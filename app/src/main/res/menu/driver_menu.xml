@@ -5,4 +5,8 @@
         android:id="@+id/profile"
         android:title="Profile"/>
 
+    <item
+        android:id="@+id/logout"
+        android:title="Logout"/>
+
 </menu>

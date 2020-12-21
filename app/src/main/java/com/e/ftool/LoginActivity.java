@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
@@ -36,6 +37,7 @@ public class LoginActivity extends AppCompatActivity {
     EditText noEdit, passEdit;
     TextView login, register;
     AlertDialog dialog;
+    SharedPreferences sp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,8 +48,12 @@ public class LoginActivity extends AppCompatActivity {
 
         initialize();
 
-        noEdit.setText("9752003852");
-        passEdit.setText("123456");
+        sp = getSharedPreferences("login",MODE_PRIVATE);
+
+        if(sp.getBoolean("logged",false)){
+
+            login(sp.getString("no",""),sp.getString("pass",""));
+        }
 
         login.setOnClickListener(view -> {
 
@@ -58,24 +64,13 @@ public class LoginActivity extends AppCompatActivity {
                 noEdit.setError("Incorrect Number");
             else if (pass.isEmpty())
                 passEdit.setError("Field is Empty");
-            else {
-
-                dialog = new AlertDialog.Builder(LoginActivity.this)
-                        .setCancelable(false)
-                        .setMessage("Loading ...").create();
-                dialog.show();
-
+            else
                 login(no, pass);
-            }
 
         });
 
-        register.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
-            }
-        });
+        register.setOnClickListener(view -> startActivity(new Intent(LoginActivity.this,
+                RegisterActivity.class)));
 
     }
 
@@ -89,6 +84,11 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     public void login(final String no, final String pass) {
+
+        dialog = new AlertDialog.Builder(LoginActivity.this)
+                .setCancelable(false)
+                .setMessage("Logging In ...").create();
+        dialog.show();
 
         final Boolean[] is = {false};
 
@@ -110,11 +110,13 @@ public class LoginActivity extends AppCompatActivity {
 
                             dialog.dismiss();
 
+                            sp.edit().putBoolean("logged",true).apply();
+                            sp.edit().putString("no",no).apply();
+                            sp.edit().putString("pass",pass).apply();
+
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             intent.putExtra("uId", snap.getKey());
                             startActivity(intent);
-                            finish();
-
 
                         } else {
 
@@ -146,11 +148,13 @@ public class LoginActivity extends AppCompatActivity {
 
                                         dialog.dismiss();
 
+                                        sp.edit().putBoolean("logged",true).apply();
+                                        sp.edit().putString("no",no).apply();
+                                        sp.edit().putString("pass",pass).apply();
+
                                         Intent intent = new Intent(LoginActivity.this, DriverMapActivity.class);
                                         intent.putExtra("uId", snap.getKey());
                                         startActivity(intent);
-                                        finish();
-
 
                                     } else {
 

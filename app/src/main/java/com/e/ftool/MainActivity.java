@@ -16,6 +16,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.gesture.GestureLibraries;
 import android.graphics.Color;
@@ -97,6 +98,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -132,12 +134,14 @@ public class MainActivity extends AppCompatActivity {
     ChipGroup chipGroup;
     String desiredService;
     ImageView statusIcon;
+    SharedPreferences sp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        sp = getSharedPreferences("login",MODE_PRIVATE);
         temp = findViewById(R.id.temp);
         city = findViewById(R.id.city);
         wind = findViewById(R.id.wind);
@@ -445,6 +449,27 @@ public class MainActivity extends AppCompatActivity {
             } else
                 Toast.makeText(MainActivity.this, "Order Not Accepted Yet", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+        getMenuInflater().inflate(R.menu.customer_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+
+        int id = item.getItemId();
+
+        if(id == R.id.logout){
+
+            sp.edit().putBoolean("logged",false).apply();
+            finish();
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     public void checkGPS() {

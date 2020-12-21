@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -76,12 +77,14 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
     Circle dCircle;
     LocationRequest locationRequest;
     LocationCallback mLocationCallback;
+    SharedPreferences sp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_driver_map);
 
+        sp = getSharedPreferences("login",MODE_PRIVATE);
         uId = getIntent().getStringExtra("uId");
         ref = FirebaseDatabase.getInstance().getReference("drivers").child(uId);
         cRef = FirebaseDatabase.getInstance().getReference("customers");
@@ -466,6 +469,12 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
             intent.putExtra("uId", uId);
             intent.putExtra("user","d");
             startActivity(intent);
+
+        }
+        else if(id == R.id.logout){
+
+            sp.edit().putBoolean("logged",false).apply();
+            finish();
 
         }
 
