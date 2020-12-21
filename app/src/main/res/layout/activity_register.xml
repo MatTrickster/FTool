@@ -46,6 +46,7 @@
                 />
 
             <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_margin="8dp"
                 android:hint="Name"
                 android:layout_width="match_parent"
@@ -61,6 +62,7 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_margin="10dp"
                 android:hint="Number"
                 android:layout_width="match_parent"
@@ -77,6 +79,7 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_margin="10dp"
                 android:hint="Password"
                 android:layout_width="match_parent"

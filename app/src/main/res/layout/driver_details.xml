@@ -112,7 +112,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="3"
-                    android:text="Service"
+                    android:text="Rating"
                     android:textColor="#000"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -127,12 +127,12 @@
                     />
 
                 <TextView
-                    android:id="@+id/service"
+                    android:id="@+id/rating"
                     android:gravity="center"
                     android:layout_width="0dp"
                     android:layout_weight="3"
                     android:layout_height="wrap_content"
-                    android:text="Tractor"
+                    android:text="3.7"
                     android:textColor="#000"
                     android:textSize="14sp" />
 

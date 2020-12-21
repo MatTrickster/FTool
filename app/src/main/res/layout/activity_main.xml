@@ -18,7 +18,7 @@
             android:orientation="vertical">
 
             <ProgressBar
-                android:layout_marginTop="-11dp"
+                android:layout_marginTop="-12dp"
                 android:id="@+id/progress"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
@@ -27,6 +27,7 @@
                 />
 
             <com.google.android.material.card.MaterialCardView
+                app:cardElevation="6dp"
                 android:id="@+id/weather_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -152,6 +153,7 @@
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
+                app:cardElevation="6dp"
                 android:id="@+id/drivers_around_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -198,6 +200,7 @@
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
+                app:cardElevation="6dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="10dp"
@@ -225,11 +228,12 @@
                         android:background="#000" />
 
                     <LinearLayout
+                        android:visibility="gone"
                         android:id="@+id/current_order"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone">
+                        >
 
                         <com.google.android.material.card.MaterialCardView
                             android:id="@+id/order"
@@ -348,6 +352,14 @@
                                         android:text="Order Accepted"
                                         android:textColor="#1CCF11"
                                         android:textStyle="bold" />
+
+                                    <ImageView
+                                        android:id="@+id/status_icon"
+                                        android:layout_marginEnd="4dp"
+                                        android:layout_toStartOf="@id/status"
+                                        android:src="@drawable/ic_accepted"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="20dp"/>
 
                                 </RelativeLayout>
 

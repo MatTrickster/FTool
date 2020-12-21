@@ -119,7 +119,7 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
 
                     driver = new Driver(snapshot.child("name").getValue().toString(), snapshot.child("number").getValue()
                             .toString(), snapshot.child("customer_request").child("service").getValue().toString(), "0",
-                            snapshot.child("photo_url").exists()?snapshot.child("photo_url").getValue().toString():"null");
+                            snapshot.child("photo_url").exists()?snapshot.child("photo_url").getValue().toString():"null",1);
 
                     cId = snapshot.child("customer_request").child("uId").getValue().toString();
 

@@ -49,15 +49,14 @@ public class DriversAdapter extends RecyclerView.Adapter<DriversAdapter.ViewHold
         holder.name.setText(drivers.get(position).getName());
         holder.number.setText(""+drivers.get(position).getNumber());
         holder.charge.setText("Rs. "+drivers.get(position).getServiceCharge() + " /Hr");
+        holder.rating.setText(drivers.get(position).getRating());
+        holder.distance.setText((String.format("%.2f",drivers.get(position).getDist()/1000))+" Km");
 
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        holder.itemView.setOnClickListener(view -> {
 
-                map.moveCamera(CameraUpdateFactory.newLatLng(drivers.get(position).getLocation()));
-                sheet.setState(BottomSheetBehavior.STATE_COLLAPSED);
+            map.moveCamera(CameraUpdateFactory.newLatLng(drivers.get(position).getLocation()));
+            sheet.setState(BottomSheetBehavior.STATE_COLLAPSED);
 
-            }
         });
 
     }
@@ -70,7 +69,7 @@ public class DriversAdapter extends RecyclerView.Adapter<DriversAdapter.ViewHold
     public class ViewHolder extends RecyclerView.ViewHolder{
 
         CircleImageView imageView;
-        TextView name,number,charge;
+        TextView name,number,charge,rating,distance;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -79,6 +78,8 @@ public class DriversAdapter extends RecyclerView.Adapter<DriversAdapter.ViewHold
             name = v.findViewById(R.id.driver_name);
             number = v.findViewById(R.id.driver_number);
             charge = v.findViewById(R.id.service_charge);
+            rating = v.findViewById(R.id.driver_rating);
+            distance = v.findViewById(R.id.distance);
         }
     }
 

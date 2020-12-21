@@ -6,6 +6,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
+import android.view.View;
+import android.widget.TextView;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -25,6 +27,7 @@ public class HistoryActivity extends AppCompatActivity {
     String uId,user;
     List<HashMap<String,String>> items;
     LinearLayoutManager layoutManager;
+    TextView noRecord;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +39,7 @@ public class HistoryActivity extends AppCompatActivity {
         user = getIntent().getStringExtra("user");
         recyclerView = findViewById(R.id.history_recyclerview);
         adapter = new HistoryAdapter(items);
+        noRecord = findViewById(R.id.no_record);
 
          layoutManager = new LinearLayoutManager(HistoryActivity.this, LinearLayoutManager.VERTICAL,
                  false);
@@ -64,6 +68,9 @@ public class HistoryActivity extends AppCompatActivity {
                     items.add(map);
 
                 }
+
+                if(items.size()>0)
+                    noRecord.setVisibility(View.GONE);
 
                 adapter.notifyDataSetChanged();
             }

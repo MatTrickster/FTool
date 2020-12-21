@@ -51,11 +51,6 @@ public class LoginActivity extends AppCompatActivity {
 
         login.setOnClickListener(view -> {
 
-            dialog = new AlertDialog.Builder(LoginActivity.this)
-                    .setCancelable(false)
-                    .setMessage("Loading ...").create();
-            dialog.show();
-
             String no = noEdit.getText().toString();
             String pass = passEdit.getText().toString();
 
@@ -63,8 +58,15 @@ public class LoginActivity extends AppCompatActivity {
                 noEdit.setError("Incorrect Number");
             else if (pass.isEmpty())
                 passEdit.setError("Field is Empty");
-            else
+            else {
+
+                dialog = new AlertDialog.Builder(LoginActivity.this)
+                        .setCancelable(false)
+                        .setMessage("Loading ...").create();
+                dialog.show();
+
                 login(no, pass);
+            }
 
         });
 

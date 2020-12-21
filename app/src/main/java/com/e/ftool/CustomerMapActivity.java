@@ -96,6 +96,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -187,30 +188,36 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
         chipGroup.setOnCheckedChangeListener((group, checkedId) -> {
 
-            if(checkedId == R.id.l_to_h){
+            if (checkedId == R.id.l_to_h) {
                 drivers.sort((driver, t1) -> {
 
                     int charge1 = Integer.parseInt(driver.getServiceCharge());
                     int charge2 = Integer.parseInt(t1.getServiceCharge());
 
-                    return charge1-charge2;
+                    return charge1 - charge2;
                 });
 
-            }else if(checkedId == R.id.h_rating){
+            } else if (checkedId == R.id.h_rating) {
 
                 drivers.sort((driver, t1) -> {
 
-                    int charge1 = Integer.parseInt(driver.getServiceCharge());
-                    int charge2 = Integer.parseInt(t1.getServiceCharge());
+                    double charge1 = Double.parseDouble(driver.getRating());
+                    double charge2 = Double.parseDouble(t1.getRating());
 
-                    return charge2-charge1;
+                    return Double.compare(charge2,charge1);
                 });
 
+            }else{
+
+                drivers.sort((driver, t1) -> {
+
+                    return Float.compare(driver.getDist(),t1.getDist());
+                });
             }
 
             driversBottomSheet.setState(BottomSheetBehavior.STATE_EXPANDED);
 
-            driversAdapter = new DriversAdapter(CustomerMapActivity.this,drivers,map,driversBottomSheet);
+            driversAdapter = new DriversAdapter(CustomerMapActivity.this, drivers, map, driversBottomSheet);
             driversList.setAdapter(driversAdapter);
 
         });
@@ -275,40 +282,35 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
     public void request(String service, String key, String land) {
 
-        if (driversSnap.child(key).child("services").child(service).getChildrenCount() == 0) {
-            Toast.makeText(CustomerMapActivity.this, "Service Not Available For Selected Driver",
-                    Toast.LENGTH_SHORT).show();
+        AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this);
+        builder.setTitle("Confirm Request?");
+        builder.setPositiveButton("Request", (dialogInterface, i) -> {
 
-        } else {
+            HashMap<String, Object> map = new HashMap<>();
+            map.put("c_lat", currentLocation.getLatitude());
+            map.put("c_lng", currentLocation.getLongitude());
+            map.put("service", service);
+            map.put("land", land);
+            map.put("contact", customerSnap.child("number").getValue().toString());
+            map.put("name", customerSnap.child("name").getValue().toString());
+            map.put("uId", uId);
+            map.put("status", "requested");
 
-            AlertDialog.Builder builder = new AlertDialog.Builder(CustomerMapActivity.this);
-            builder.setTitle("Confirm Request?");
-            builder.setPositiveButton("Request", (dialogInterface, i) -> {
+            driversRef.child(key).child("customer_request").setValue(map);
 
-                HashMap<String, Object> map = new HashMap<>();
-                map.put("c_lat", currentLocation.getLatitude());
-                map.put("c_lng", currentLocation.getLongitude());
-                map.put("service", service);
-                map.put("land", land);
-                map.put("contact", customerSnap.child("number").getValue().toString());
-                map.put("name", customerSnap.child("name").getValue().toString());
-                map.put("uId", uId);
-                map.put("status", "requested");
+            HashMap<String, String> map1 = new HashMap<>();
+            map1.put("status", "requested");
+            map1.put("driver_key", key);
+            cRef.child("request").setValue(map1);
 
-                driversRef.child(key).child("customer_request").setValue(map);
+            Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
+            finish();
 
-                HashMap<String, String> map1 = new HashMap<>();
-                map1.put("status", "requested");
-                map1.put("driver_key", key);
-                cRef.child("request").setValue(map1);
+        }).setNegativeButton("Cancel", (dialogInterface, i) -> {
+        });
 
-                Toast.makeText(CustomerMapActivity.this, "Request Sent Successfully", Toast.LENGTH_SHORT).show();
-                finish();
+        builder.create().show();
 
-            }).setNegativeButton("Cancel", (dialogInterface, i) -> {
-            });
-
-        }
     }
 
     public void getDriversAround(String range) {
@@ -353,12 +355,12 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                         Driver driver = new Driver(driverLocation, serviceCharge,
                                 driversSnap.child(snap.getKey()).child("name").getValue().toString(),
                                 driversSnap.child(snap.getKey()).child("number").getValue().toString(), snap.getKey(),
-                                driversSnap.child(snap.getKey()).child("photo_url").getValue().toString());
+                                driversSnap.child(snap.getKey()).child("photo_url").getValue().toString(),
+                                driversSnap.child(snap.getKey()).child("rating").getValue().toString(),dis);
 
                         drivers.add(driver);
 
                     }
-
                 }
 
                 driversAround.setText("" + drivers.size());
@@ -366,7 +368,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
 
                 driversBottomCard.setVisibility(View.VISIBLE);
 
-                driversAdapter = new DriversAdapter(CustomerMapActivity.this,drivers,map,driversBottomSheet);
+                driversAdapter = new DriversAdapter(CustomerMapActivity.this, drivers, map, driversBottomSheet);
                 driversList.setLayoutManager(layoutManager);
                 driversList.setAdapter(driversAdapter);
             }
@@ -401,7 +403,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
         dialog.dismiss();
 
         if (drivers.size() != 0)
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builderB.build(), 100));
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(builderB.build(), 200));
         else {
             builder = new AlertDialog.Builder(CustomerMapActivity.this);
             builder.setMessage("No Driver Found!\nTry Increasing range.")
@@ -559,7 +561,7 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
             TextView dName = v.findViewById(R.id.driver_name);
             TextView dNumber = v.findViewById(R.id.driver_number);
             CircleImageView dImg = v.findViewById(R.id.driver_img);
-            TextView service = v.findViewById(R.id.service);
+            TextView rating = v.findViewById(R.id.rating);
             TextView sCharge = v.findViewById(R.id.service_charge);
             TextInputEditText land = v.findViewById(R.id.land);
             Button request = v.findViewById(R.id.request);
@@ -571,8 +573,8 @@ public class CustomerMapActivity extends AppCompatActivity implements OnMapReady
                     driverSelectedKey = drivers.get(i).getKey();
                     dName.setText(drivers.get(i).getName());
                     dNumber.setText(drivers.get(i).getNumber());
-                    service.setText(desiredService);
-                    sCharge.setText(drivers.get(i).getServiceCharge());
+                    rating.setText(drivers.get(i).getRating());
+                    sCharge.setText(drivers.get(i).getServiceCharge()+" /Hr");
                     Glide.with(CustomerMapActivity.this).load(drivers.get(i).getImgUrl())
                             .placeholder(R.drawable.ic_person)
                             .into(dImg);

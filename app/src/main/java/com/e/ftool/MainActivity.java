@@ -131,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
     BottomSheetBehavior bottomSheetBehavior;
     ChipGroup chipGroup;
     String desiredService;
+    ImageView statusIcon;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -167,6 +168,7 @@ public class MainActivity extends AppCompatActivity {
         hide = findViewById(R.id.hide);
         dim = findViewById(R.id.dim);
         chipGroup = findViewById(R.id.chip_group);
+        statusIcon = findViewById(R.id.status_icon);
 
         chipGroup.setOnCheckedChangeListener((group, checkedId) -> {
 
@@ -209,6 +211,11 @@ public class MainActivity extends AppCompatActivity {
                     myDriverKey = snapshot.child("request").child("driver_key").getValue().toString();
                     orderStatus = snapshot.child("request").child("status").getValue().toString();
 
+                    if(orderStatus.equals("requested"))
+                        statusIcon.setImageResource(R.drawable.ic_requested);
+                    else if(orderStatus.equals("accepted"))
+                        statusIcon.setImageResource(R.drawable.ic_accepted);
+
                     dRef = FirebaseDatabase.getInstance().getReference("drivers/" + myDriverKey + "/");
 
                     dRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -220,7 +227,8 @@ public class MainActivity extends AppCompatActivity {
 
                             myDriver = new Driver(snapshot.child("name").getValue().toString(),
                                     snapshot.child("number").getValue().toString(), "",
-                                    snapshot.child("rating").getValue().toString(), driverImgUrl);
+                                    snapshot.child("rating").getValue().toString(), driverImgUrl,
+                                    snapshot.child("history").getChildrenCount());
 
                             if(orderStatus.equals("requested") || orderStatus.equals("accepted")) {
                                 String s = snapshot.child("customer_request").child("service").getValue().toString();
@@ -297,6 +305,12 @@ public class MainActivity extends AppCompatActivity {
                                     }
 
                                     dRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
+
+                                    double rat = Float.parseFloat(myDriver.getRating()) * myDriver.getrCount();
+                                    rat = rat + ratingBar.getRating();
+                                    rat = rat / (myDriver.getrCount() + 1);
+                                    dRef.child("rating").setValue(rat);
+
                                     cRef.child("request").removeValue();
                                     cRef.child("history").child(time).setValue(snapshot.child("current_ride").child(time).getValue());
                                     cRef.child("history").child(time).child("rating").setValue(String.valueOf(ratingBar.getRating()));
