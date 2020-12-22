@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1065913479990",
+    "firebase_url": "https://ftool-4bd8e.firebaseio.com",
+    "project_id": "ftool-4bd8e",
+    "storage_bucket": "ftool-4bd8e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1065913479990:android:e8a9b1257c0c1d5e593997",
+        "android_client_info": {
+          "package_name": "com.e.ftool"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1065913479990-ekm7jthrt01dle0937o8kj5kt3rolbc6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.e.ftool",
+            "certificate_hash": "ffbc61c7bd3dd9f51b3ad0b2d45ad571ff8e91f1"
+          }
+        },
+        {
+          "client_id": "1065913479990-g9e0fb1ni38nd2d3a6v80lf5llckbgai.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGBWR2DVYYJZnEUEcOF-yHCnmjWE7LXrw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1065913479990-g9e0fb1ni38nd2d3a6v80lf5llckbgai.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
