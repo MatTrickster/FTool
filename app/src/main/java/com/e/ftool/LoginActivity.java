@@ -117,6 +117,7 @@ public class LoginActivity extends AppCompatActivity {
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             intent.putExtra("uId", snap.getKey());
                             startActivity(intent);
+                            finish();
 
                         } else {
 
@@ -155,6 +156,7 @@ public class LoginActivity extends AppCompatActivity {
                                         Intent intent = new Intent(LoginActivity.this, DriverMapActivity.class);
                                         intent.putExtra("uId", snap.getKey());
                                         startActivity(intent);
+                                        finish();
 
                                     } else {
 

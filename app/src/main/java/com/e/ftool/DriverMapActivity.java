@@ -474,6 +474,8 @@ public class DriverMapActivity extends AppCompatActivity implements OnMapReadyCa
         else if(id == R.id.logout){
 
             sp.edit().putBoolean("logged",false).apply();
+
+            startActivity(new Intent(DriverMapActivity.this,LoginActivity.class));
             finish();
 
         }

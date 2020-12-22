@@ -11,7 +11,7 @@
     <ImageView
         android:scaleType="center"
         android:layout_width="match_parent"
-        android:layout_height="350dp"
+        android:layout_height="300dp"
         android:src="@mipmap/logo"
         />
 
@@ -82,6 +82,7 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_margin="10dp"
                 android:hint="Password"
+                app:passwordToggleEnabled="true"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 

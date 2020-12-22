@@ -176,8 +176,11 @@ public class MainActivity extends AppCompatActivity {
 
         chipGroup.setOnCheckedChangeListener((group, checkedId) -> {
 
-            Chip chip = group.findViewById(checkedId);
-            desiredService = chip.getText().toString();
+            if (checkedId != -1) {
+                Chip chip = group.findViewById(checkedId);
+                desiredService = "" + chip.getText().toString();
+            }else
+                desiredService = null;
 
         });
 
@@ -466,6 +469,8 @@ public class MainActivity extends AppCompatActivity {
         if(id == R.id.logout){
 
             sp.edit().putBoolean("logged",false).apply();
+
+            startActivity(new Intent(MainActivity.this,LoginActivity.class));
             finish();
         }
 
@@ -483,34 +488,31 @@ public class MainActivity extends AppCompatActivity {
 
         Task<LocationSettingsResponse> result = LocationServices.getSettingsClient(this)
                 .checkLocationSettings(builder.build());
-        result.addOnCompleteListener(new OnCompleteListener<LocationSettingsResponse>() {
-            @Override
-            public void onComplete(@NonNull Task<LocationSettingsResponse> task) {
-                try {
-                    LocationSettingsResponse response =
-                            task.getResult(ApiException.class);
+        result.addOnCompleteListener(task -> {
+            try {
+                LocationSettingsResponse response =
+                        task.getResult(ApiException.class);
 
-                    if(response.getLocationSettingsStates().isGpsPresent()){
+                if(response.getLocationSettingsStates().isGpsPresent()){
 
-                        fetchLocation();
-                    }
-                } catch (ApiException ex) {
-                    switch (ex.getStatusCode()) {
-                        case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                            try {
-                                ResolvableApiException resolvableApiException =
-                                        (ResolvableApiException) ex;
-                                resolvableApiException
-                                        .startResolutionForResult(MainActivity.this,
-                                                100);
-                            } catch (IntentSender.SendIntentException e) {
+                    fetchLocation();
+                }
+            } catch (ApiException ex) {
+                switch (ex.getStatusCode()) {
+                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                        try {
+                            ResolvableApiException resolvableApiException =
+                                    (ResolvableApiException) ex;
+                            resolvableApiException
+                                    .startResolutionForResult(MainActivity.this,
+                                            100);
+                        } catch (IntentSender.SendIntentException e) {
 
-                            }
-                            break;
-                        case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                        }
+                        break;
+                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
 
-                            break;
-                    }
+                        break;
                 }
             }
         });
@@ -675,6 +677,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if(requestCode == 10 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+            fetchLocation();
+        }
 
         if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Intent callIntent = new Intent(Intent.ACTION_CALL);
